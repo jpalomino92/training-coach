@@ -1,4 +1,4 @@
-# [Nombre de la app]
+# THE Training coach
 
 App web (PWA) para seguir rutinas de fuerza: registro de series (peso, repeticiones y RIR), última sesión, sugerencias de doble progresión, temporizador de descanso, historial, progreso por ejercicio y peso corporal.
 
@@ -61,8 +61,18 @@ Los programas son solo datos (`src/domain/routines.ts`). Para añadir uno, copia
 3. Authentication → URL Configuration: pon la URL pública de la app en **Site URL** (para los enlaces de confirmación).
 4. Pruebas contra el proyecto real (usan `.env.supabase.local`, que no se sube al repositorio):
    - `npm run test:supabase` → Row Level Security: un usuario no puede leer, cambiar, borrar ni escribir datos de otro.
-   - `npm run test:e2e:supabase` → la app completa en el navegador conectada a Supabase.
-   - Necesitan `SUPABASE_TEST_EMAIL` (una dirección propia que admita alias con `+`) y "Confirm email" desactivado.
+   - `npm run test:e2e:supabase` → la app de producción (con service worker) conectada a Supabase, incluido el uso sin conexión.
+   - Usan dos cuentas fijas (`SUPABASE_TEST_EMAIL` con los alias `+test-a` y `+test-b`, y `SUPABASE_TEST_PASSWORD`), que se vacían antes de cada prueba. Se crean la primera vez: en ese momento "Confirm email" tiene que estar desactivado. Supabase limita los registros por hora, por eso no se crean cuentas nuevas en cada ejecución.
+
+### Sin conexión
+
+En modo Supabase la app funciona sin red (`src/services/storage/offlineStore.ts`):
+
+- Cada cambio se guarda al momento en una copia local del dispositivo y se apunta en una cola.
+- La cola se envía a Supabase en orden cuando hay conexión (al volver la red, al abrir la app y cada 20 s si falla). Los registros se crean con su id en el dispositivo, así la copia local y el servidor coinciden.
+- Fallo de red o sesión caducada: se reintenta. Rechazo definitivo del servidor: se descarta y se avisa. Duplicado: cuenta como enviado.
+- La app abre sin conexión con la última copia y la sesión de este dispositivo. Iniciar sesión o crear una cuenta sí necesita internet.
+- Un aviso muestra "Sin conexión" y los cambios pendientes mientras quede algo por enviar.
 
 ## Publicar gratis
 

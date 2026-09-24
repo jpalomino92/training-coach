@@ -24,4 +24,30 @@ export interface Store {
   deleteBodyWeight(id: string): Promise<void>;
 }
 
+/** Error del almacenamiento remoto con el código de PostgREST/PostgreSQL y el estado HTTP (0 = sin red). */
+export class StoreError extends Error {
+  readonly code: string;
+  readonly status: number;
+  constructor(message: string, code = '', status = 0) {
+    super(message);
+    this.name = 'StoreError';
+    this.code = code;
+    this.status = status;
+  }
+}
+
+/** Estado de sincronización (solo lo expone el almacenamiento con cola sin conexión). */
+export interface SyncState { online: boolean; pending: number; syncing: boolean }
+
+export interface SyncSource {
+  getSyncState(): SyncState;
+  /** Devuelve la función para dejar de escuchar. */
+  onSync(listener: (s: SyncState) => void): () => void;
+  /** Avisa cuando el servidor rechaza un cambio de forma definitiva. */
+  onRejected(listener: (count: number) => void): () => void;
+  flush(): Promise<void>;
+}
+
+export const isSyncSource = (s: unknown): s is SyncSource => !!s && typeof (s as SyncSource).onSync === 'function';
+
 export const emptyData = (): UserData => ({ profile: null, workouts: [], sets: [], notes: {}, bodyWeights: [] });

@@ -5,8 +5,8 @@
    Usa solo la clave pública "anon" (nunca la service_role).
    ========================================================== */
 
-/** Nombre de la app: pendiente de confirmar. Es el único sitio donde se define. */
-export const APP_NAME = '[Nombre de la app]';
+/** Nombre de la app. Es el único sitio donde se define. */
+export const APP_NAME = 'THE Training coach';
 
 /** Prefijo de las claves de almacenamiento local. */
 export const STORAGE_PREFIX = 'fuerza:v1';

@@ -8,3 +8,4 @@ playwright-report
 screenshots
 .env.*
 !.env.example
+dist-supabase

@@ -2,6 +2,7 @@
    Navegación con estado simple (sin router): son 5 pestañas sin URLs profundas
    y el temporizador y los datos se comparten entre ellas. */
 import { RestTimer } from './components/RestTimer';
+import { SyncBanner } from './components/SyncBanner';
 import { TabBar } from './components/TabBar';
 import { Button } from './components/Button';
 import { useDocumentTheme } from './hooks/useDocumentTheme';
@@ -27,6 +28,7 @@ function Main() {
     <>
       <TabBar current={tab} onSelect={setTab} />
       <div className="page">
+        <SyncBanner />
         {tab === 'hoy' && <TodayView />}
         {tab === 'rutina' && <RoutineView />}
         {tab === 'progreso' && <ProgressView />}

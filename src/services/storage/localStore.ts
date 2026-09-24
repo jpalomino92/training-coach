@@ -17,11 +17,24 @@ export class LocalStore implements Store {
   private d: UserData | null = null;
   private readonly storage: Storage;
 
-  constructor(userId: string, storage: Storage = localStorage) {
+  /** `key` permite usarlo como copia local de otro almacenamiento (cola sin conexión). */
+  constructor(userId: string, storage: Storage = localStorage, key: string = dataKey(userId)) {
     if (!userId) throw new Error('Falta el usuario');
     this.userId = userId;
-    this.key = dataKey(userId);
+    this.key = key;
     this.storage = storage;
+  }
+
+  /** Sustituye todo por los datos recibidos (solo los de este usuario). */
+  replaceAll(d: UserData): void {
+    this.d = structuredClone({
+      profile: this.own(d.profile) ? d.profile : null,
+      workouts: d.workouts.filter(this.own),
+      sets: d.sets.filter(this.own),
+      notes: Object.fromEntries(Object.entries(d.notes).filter(([, n]) => this.own(n))),
+      bodyWeights: d.bodyWeights.filter(this.own)
+    });
+    this.write();
   }
 
   private read(): UserData {
@@ -61,8 +74,8 @@ export class LocalStore implements Store {
   async createWorkout(w: WorkoutInput): Promise<Workout> {
     const d = this.read();
     const rec: Workout = {
-      id: uid(), status: 'in_progress', feel: {}, notes: '', completed_at: null,
-      ...w, started_at: w.started_at || nowIso(), user_id: this.userId
+      status: 'in_progress', feel: {}, notes: '', completed_at: null,
+      ...w, id: w.id || uid(), started_at: w.started_at || nowIso(), user_id: this.userId
     };
     d.workouts.push(rec); this.write();
     return structuredClone(rec);
@@ -89,8 +102,8 @@ export class LocalStore implements Store {
     if (!d.workouts.some(w => w.id === s.workout_id && this.own(w))) throw new Error('Entrenamiento no encontrado');
     const i = d.sets.findIndex(x => this.own(x) && x.workout_id === s.workout_id && x.exercise_key === s.exercise_key && x.set_index === s.set_index);
     const now = nowIso();
-    const base = i >= 0 ? d.sets[i] : { id: uid(), created_at: now };
-    const rec: WorkoutSet = { ...base, ...s, user_id: this.userId, updated_at: now };
+    const base = i >= 0 ? d.sets[i] : { id: s.id || uid(), created_at: now };
+    const rec: WorkoutSet = { ...base, ...s, id: base.id, user_id: this.userId, updated_at: now };
     if (i >= 0) d.sets[i] = rec; else d.sets.push(rec);
     this.write();
     return { ...rec };
@@ -112,7 +125,7 @@ export class LocalStore implements Store {
 
   async addBodyWeight(b: BodyWeightInput): Promise<BodyWeight> {
     const d = this.read();
-    const rec: BodyWeight = { id: uid(), note: '', ...b, user_id: this.userId, created_at: nowIso() };
+    const rec: BodyWeight = { note: '', ...b, id: b.id || uid(), user_id: this.userId, created_at: nowIso() };
     d.bodyWeights.push(rec); this.write();
     return { ...rec };
   }

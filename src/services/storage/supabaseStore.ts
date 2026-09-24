@@ -7,9 +7,9 @@ import type {
   SetInput, UserData, Workout, WorkoutInput, WorkoutPatch, WorkoutSet
 } from '../../domain/types';
 import { nowIso, uid } from '../uid';
-import type { Store } from './types';
+import { StoreError, type Store } from './types';
 
-interface Res<T> { data: T | null; error: { message: string } | null }
+interface Res<T> { data: T | null; error: { message: string; code?: string } | null; status?: number }
 
 const numOrNull = (v: unknown) => (v == null ? null : Number(v));
 const toSet = (r: WorkoutSet): WorkoutSet => ({ ...r, weight: numOrNull(r.weight), rir: numOrNull(r.rir), reps: Number(r.reps) });
@@ -25,7 +25,7 @@ export class SupabaseStore implements Store {
   }
 
   private chk<T>(res: Res<T>): T {
-    if (res.error) throw new Error(res.error.message);
+    if (res.error) throw new StoreError(res.error.message, res.error.code || '', res.status ?? 0);
     return res.data as T;
   }
 
@@ -56,7 +56,7 @@ export class SupabaseStore implements Store {
   }
 
   async createWorkout(w: WorkoutInput): Promise<Workout> {
-    const row = { id: uid(), status: 'in_progress', feel: {}, notes: '', completed_at: null, ...w, started_at: w.started_at || nowIso(), user_id: this.userId };
+    const row = { status: 'in_progress', feel: {}, notes: '', completed_at: null, ...w, id: w.id || uid(), started_at: w.started_at || nowIso(), user_id: this.userId };
     return this.chk<Workout>(await this.c.from('workouts').insert(row).select().single());
   }
 
@@ -86,7 +86,7 @@ export class SupabaseStore implements Store {
   }
 
   async addBodyWeight(b: BodyWeightInput): Promise<BodyWeight> {
-    const row = { id: uid(), note: '', ...b, user_id: this.userId };
+    const row = { note: '', ...b, id: b.id || uid(), user_id: this.userId };
     return toBw(this.chk<BodyWeight>(await this.c.from('body_weights').insert(row).select().single()));
   }
 

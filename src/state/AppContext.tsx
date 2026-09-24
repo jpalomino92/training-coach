@@ -11,8 +11,7 @@ import type {
 } from '../domain/types';
 import { activeWorkout, defaultDayId, isDayDone, setsOf } from '../domain/workout';
 import { createBackend, type Backend } from '../services/backend';
-import type { Store } from '../services/storage/types';
-import { emptyData } from '../services/storage/types';
+import { emptyData, isSyncSource, type Store, type SyncState } from '../services/storage/types';
 import { dataReducer } from './dataReducer';
 
 export type Tab = 'hoy' | 'rutina' | 'progreso' | 'historial' | 'perfil';
@@ -36,6 +35,8 @@ export interface AppApi {
   setEditingProfile(v: boolean): void;
   toast: string;
   showToast(msg: string): void;
+  /** Estado de la cola sin conexión (null en modo demo, que siempre es local). */
+  sync: SyncState | null;
 
   signIn(email: string, password: string): Promise<void>;
   signUp(email: string, password: string): Promise<void>;
@@ -74,6 +75,8 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
   const [dayIdState, setDayId] = useState<string>('');
   const [editingProfile, setEditingProfile] = useState(false);
   const [toast, setToast] = useState('');
+  const [sync, setSync] = useState<SyncState | null>(null);
+  const unsubSync = useRef<(() => void) | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const showToast = useCallback((msg: string) => {
@@ -87,9 +90,25 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
     return storeRef.current;
   };
 
+  const releaseStore = useCallback(() => {
+    unsubSync.current?.();
+    unsubSync.current = null;
+    (storeRef.current as { dispose?: () => void } | null)?.dispose?.();
+    storeRef.current = null;
+    setSync(null);
+  }, []);
+
   const loadUser = useCallback(async (b: Backend, u: AuthUser) => {
     const s = b.createStore(u);
     const d = await s.loadAll();
+    if (isSyncSource(s)) {
+      const off1 = s.onSync(setSync);
+      const off2 = s.onRejected(n => showToast(n === 1
+        ? 'Un cambio no se pudo guardar en el servidor y se ha descartado.'
+        : `${n} cambios no se pudieron guardar en el servidor y se han descartado.`));
+      unsubSync.current = () => { off1(); off2(); };
+      setSync(s.getSyncState());
+    }
     storeRef.current = s;
     setUser(u);
     dispatch({ type: 'load', data: d });
@@ -97,7 +116,7 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
     setDayId('');
     setEditingProfile(false);
     setStatus('ready');
-  }, []);
+  }, [showToast]);
 
   // Arranque: crea el backend y recupera la sesión
   useEffect(() => {
@@ -139,7 +158,7 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
 
   const api: AppApi = {
     status, bootError, mode: backend?.auth.mode || 'demo', user, data, profile, program,
-    tab, setTab, dayId, setDayId, editingProfile, setEditingProfile, toast, showToast,
+    tab, setTab, dayId, setDayId, editingProfile, setEditingProfile, toast, showToast, sync,
 
     async signIn(email, password) {
       const u = await backend!.auth.signIn(email, password);
@@ -150,8 +169,10 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
       await loadUser(backend!, u);
     },
     async signOut() {
+      const pending = sync?.pending || 0;
       await backend!.auth.signOut();
-      storeRef.current = null;
+      releaseStore();
+      if (pending) showToast(`Quedan ${pending} ${pending === 1 ? 'cambio' : 'cambios'} por enviar: se enviarán cuando vuelvas a entrar con conexión.`);
       setUser(null);
       dispatch({ type: 'clear' });
       setEditingProfile(false);

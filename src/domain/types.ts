@@ -97,7 +97,8 @@ export interface Workout {
   notes: string;
 }
 
-export type WorkoutInput = Pick<Workout, 'program_id' | 'day_id'> & Partial<Pick<Workout, 'status' | 'started_at' | 'feel'>>;
+/** `id` opcional: la cola sin conexión crea el registro en el dispositivo y lo envía con el mismo id. */
+export type WorkoutInput = Pick<Workout, 'program_id' | 'day_id'> & Partial<Pick<Workout, 'id' | 'status' | 'started_at' | 'feel'>>;
 export type WorkoutPatch = Partial<Pick<Workout, 'status' | 'completed_at' | 'feel' | 'notes'>>;
 
 export interface WorkoutSet {
@@ -113,7 +114,7 @@ export interface WorkoutSet {
   updated_at: string;
 }
 
-export type SetInput = Pick<WorkoutSet, 'workout_id' | 'exercise_key' | 'set_index' | 'weight' | 'reps' | 'rir'>;
+export type SetInput = Pick<WorkoutSet, 'workout_id' | 'exercise_key' | 'set_index' | 'weight' | 'reps' | 'rir'> & { id?: string };
 
 export interface ExerciseNote {
   user_id: string;
@@ -131,7 +132,7 @@ export interface BodyWeight {
   created_at: string;
 }
 
-export type BodyWeightInput = Pick<BodyWeight, 'date' | 'weight_kg'> & { note?: string };
+export type BodyWeightInput = Pick<BodyWeight, 'date' | 'weight_kg'> & { note?: string; id?: string };
 
 export interface UserData {
   profile: Profile | null;
