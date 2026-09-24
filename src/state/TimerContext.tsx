@@ -2,6 +2,7 @@
    siga siendo correcto aunque se bloquee la pantalla. Al terminar vibra 200 ms
    y se cierra solo a los 5 s. */
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { playRestEnd, primeAudio } from '../services/sound';
 
 export interface TimerState {
   endAt: number;
@@ -33,10 +34,19 @@ export function useTimer(): TimerApi {
 
 export const vibrate = (ms: number) => { try { navigator.vibrate?.(ms); } catch { /* sin vibración */ } };
 
-export function TimerProvider({ children }: { children: ReactNode }) {
+export function TimerProvider({ children, sound = true }: { children: ReactNode; sound?: boolean }) {
   const [timer, setTimer] = useState<TimerState | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const rang = useRef(false);
+  const soundRef = useRef(sound);
+  soundRef.current = sound;
+
+  // El audio solo se puede activar tras un toque: se desbloquea con el primero
+  useEffect(() => {
+    const unlock = () => primeAudio();
+    document.addEventListener('pointerdown', unlock, { passive: true });
+    return () => document.removeEventListener('pointerdown', unlock);
+  }, []);
 
   useEffect(() => {
     if (!timer) return;
@@ -50,7 +60,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!timer || !finished) return;
-    if (!rang.current) { rang.current = true; vibrate(200); }
+    if (!rang.current) { rang.current = true; vibrate(200); if (soundRef.current) playRestEnd(); }
     const id = setTimeout(() => setTimer(null), Math.max(0, timer.endAt + AUTO_CLOSE_MS - Date.now()));
     return () => clearTimeout(id);
   }, [timer, finished]);

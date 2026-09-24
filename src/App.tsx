@@ -6,11 +6,13 @@ import { SyncBanner } from './components/SyncBanner';
 import { TabBar } from './components/TabBar';
 import { Button } from './components/Button';
 import { useDocumentTheme } from './hooks/useDocumentTheme';
+import { useWakeLock } from './hooks/useWakeLock';
 import { AppProvider, useApp, useDay } from './state/AppContext';
 import { TimerProvider } from './state/TimerContext';
 import { AuthView } from './views/AuthView';
 import { HistoryView } from './views/HistoryView';
 import { OnboardingView } from './views/OnboardingView';
+import { NewPasswordView } from './views/PasswordSheets';
 import { ProfileView } from './views/ProfileView';
 import { ProgressView } from './views/ProgressView';
 import { RoutineView } from './views/RoutineView';
@@ -23,7 +25,10 @@ function Toast() {
 }
 
 function Main() {
-  const { tab, setTab } = useApp();
+  const { tab, setTab, prefs } = useApp();
+  const { workout } = useDay();
+  // Pantalla encendida mientras haya un entrenamiento en curso (si está activado en Perfil)
+  useWakeLock(prefs.keep_awake && workout?.status === 'in_progress');
   return (
     <>
       <TabBar current={tab} onSelect={setTab} />
@@ -57,17 +62,25 @@ function Screens() {
     );
   }
   if (status === 'signedOut') return <AuthView />;
+  if (status === 'recovery') return <NewPasswordView />;
   if (!profile || editingProfile) return <OnboardingView />;
   return <Main />;
+}
+
+function TimedScreens() {
+  const { prefs } = useApp();
+  return (
+    <TimerProvider sound={prefs.sound}>
+      <Screens />
+      <Toast />
+    </TimerProvider>
+  );
 }
 
 export function App({ backend }: { backend?: Backend }) {
   return (
     <AppProvider backend={backend}>
-      <TimerProvider>
-        <Screens />
-        <Toast />
-      </TimerProvider>
+      <TimedScreens />
     </AppProvider>
   );
 }

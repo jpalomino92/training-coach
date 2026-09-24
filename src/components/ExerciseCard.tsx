@@ -4,6 +4,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { fmtDate, restText, setText, targetText } from '../domain/format';
 import { suggest } from '../domain/progression';
+import { recordFor } from '../domain/records';
 import type { Exercise, Feel, Program, WorkoutSet } from '../domain/types';
 import { lastSetAt, prefillFor, type LastSession as Last } from '../domain/workout';
 import { Button } from './Button';
@@ -17,11 +18,15 @@ import { TechniquePanel, type TechniquePanelHandle } from './TechniquePanel';
 
 export interface ExerciseCardProps {
   ex: Exercise;
+  /** Descanso que se aplica (rutina o personalizado). */
+  rest: number;
   number: number;
   total: number;
   program: Program;
   /** Series de hoy de este ejercicio. */
   sets: WorkoutSet[];
+  /** Todas las series registradas de este ejercicio (para los récords). */
+  history: WorkoutSet[];
   last: Last | null;
   lastFeel?: Feel;
   feel?: Feel;
@@ -37,7 +42,7 @@ export interface ExerciseCardProps {
 export function ExerciseCard(p: ExerciseCardProps) {
   const { ex, sets, last } = p;
   const [editing, setEditing] = useState<number | null>(null);
-  const [fresh, setFresh] = useState<string | null>(null);
+  const [fresh, setFresh] = useState<{ id: string; record?: string } | null>(null);
   const techRef = useRef<TechniquePanelHandle>(null);
   const feelId = useId();
   const byIndex = new Map(sets.map(s => [s.set_index, s]));
@@ -46,7 +51,7 @@ export function ExerciseCard(p: ExerciseCardProps) {
 
   useEffect(() => {
     if (!fresh) return;
-    const t = setTimeout(() => setFresh(null), 2000);
+    const t = setTimeout(() => setFresh(null), fresh.record ? 4000 : 2000);
     return () => clearTimeout(t);
   }, [fresh]);
 
@@ -61,16 +66,17 @@ export function ExerciseCard(p: ExerciseCardProps) {
       return (
         <SetEditor key={`${ex.key}-${i}-${mode}`} ex={ex} index={i} mode={mode} initial={initial} reference={lastRef(i)}
           onSubmit={async v => {
+            const before = p.history;
             const rec = await p.onRecord(i, v, mode);
             setEditing(null);
-            if (rec) setFresh(rec.id);
+            if (rec) setFresh({ id: rec.id, record: mode === 'new' ? recordFor(ex, rec, before)?.text : undefined });
           }}
           onCancel={() => setEditing(null)}
           onDelete={saved ? async () => { await p.onDelete(saved); setEditing(null); } : undefined}
         />
       );
     }
-    if (saved) return <SetDone key={saved.id} set={saved} ex={ex} fresh={fresh === saved.id} onEdit={() => setEditing(i)} />;
+    if (saved) return <SetDone key={saved.id} set={saved} ex={ex} fresh={fresh?.id === saved.id} record={fresh?.id === saved.id ? fresh.record : undefined} onEdit={() => setEditing(i)} />;
     return <SetPending key={`p${i}`} index={i} />;
   });
 
@@ -90,7 +96,7 @@ export function ExerciseCard(p: ExerciseCardProps) {
         <div className="chips">
           <span className="chip key">{targetText(ex)}</span>
           <span className="chip">RIR {ex.rir}</span>
-          <span className="chip"><Icon name="clock" />Descanso {restText(ex.rest)}</span>
+          <span className="chip"><Icon name="clock" />Descanso {restText(p.rest)}</span>
           <span className="chip">{ex.muscle}</span>
         </div>
       )}

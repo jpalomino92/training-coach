@@ -10,8 +10,10 @@ import { ExerciseRow } from '../components/ExerciseRow';
 import { HalfIcon, Icon } from '../components/Icon';
 import { HealthNoticeCompact } from '../components/HealthNotice';
 import { fmtDate, fmtToday } from '../domain/format';
+import { restFor } from '../domain/prefs';
 import type { Exercise, Feel } from '../domain/types';
-import { activeWorkout, dayStatus, isExerciseDone, lastSessionFor, totalSets } from '../domain/workout';
+import { streak, weeklyCounts, weeklyGoal } from '../domain/consistency';
+import { activeWorkout, dayStatus, isExerciseDone, lastSessionFor, programWorkouts, totalSets } from '../domain/workout';
 import { useApp, useDay } from '../state/AppContext';
 import { useTimer, vibrate } from '../state/TimerContext';
 
@@ -20,7 +22,7 @@ const scrollToEl = (el: Element | null, block: ScrollLogicalPosition = 'start') 
 
 export function TodayView() {
   const app = useApp();
-  const { data, program, profile, setDayId, setTab, showToast } = app;
+  const { data, program, profile, setDayId, setTab, showToast, prefs } = app;
   const { day, workout, sets } = useDay();
   const timer = useTimer();
   const [openKey, setOpenKey] = useState<Record<string, string>>({});
@@ -87,10 +89,10 @@ export function TodayView() {
       const doneNow = new Set([...exSets(ex).map(s => s.set_index), index]);
       const nextSet = Array.from({ length: ex.sets }, (_, i) => i).find(i => !doneNow.has(i));
       if (nextSet != null) {
-        timer.start(ex.rest, `Descanso · luego serie ${nextSet + 1} de ${ex.sets}`, `Toca: ${ex.name} · serie ${nextSet + 1}`);
+        timer.start(restFor(ex, prefs), `Descanso · luego serie ${nextSet + 1} de ${ex.sets}`, `Toca: ${ex.name} · serie ${nextSet + 1}`);
       } else {
         const nx = nextAfterActive;
-        timer.start(ex.rest, nx ? `Descanso · luego ${nx.name}` : 'Descanso', nx ? `Toca: ${nx.name} · serie 1` : 'Revisa las series que te quedan.');
+        timer.start(restFor(ex, prefs), nx ? `Descanso · luego ${nx.name}` : 'Descanso', nx ? `Toca: ${nx.name} · serie 1` : 'Revisa las series que te quedan.');
       }
     });
     return rec;
@@ -106,12 +108,18 @@ export function TodayView() {
     } finally { setBusy(false); }
   });
 
+  const programIds = new Set(programWorkouts(data, program).map(w => w.id));
+  const historyOf = (key: string) => data.sets.filter(s => s.exercise_key === key && programIds.has(s.workout_id));
+  const goal = weeklyGoal(program);
+  const thisWeek = weeklyCounts(data.workouts, 1)[0].count;
+  const weeks = streak(data.workouts, goal);
+
   const cardFor = (ex: Exercise) => {
     const last = lastSessionFor(data, program, ex.key, workout?.id);
     return (
       <ExerciseCard
-        key={ex.key} ex={ex} number={day.exercises.indexOf(ex) + 1} total={day.exercises.length} program={program}
-        sets={exSets(ex)} last={last} lastFeel={last?.workout.feel?.[ex.key]} feel={workout?.feel?.[ex.key]}
+        key={ex.key} ex={ex} rest={restFor(ex, prefs)} number={day.exercises.indexOf(ex) + 1} total={day.exercises.length} program={program}
+        sets={exSets(ex)} history={historyOf(ex.key)} last={last} lastFeel={last?.workout.feel?.[ex.key]} feel={workout?.feel?.[ex.key]}
         note={data.notes[ex.key]?.note || ''} next={nextAfterActive}
         onRecord={(i, v, mode) => record(ex, i, v, mode)}
         onDelete={s => guard(async () => { await app.removeSet(s); showToast('Serie borrada.'); })}
@@ -140,6 +148,10 @@ export function TodayView() {
       <header className="greet">
         <span className="eyebrow">{fmtToday(new Date())}</span>
         <h1 className="h1">Hola, {profile?.name}</h1>
+        <p className="week-goal">
+          <b>Esta semana: {thisWeek} de {goal}</b> {goal === 1 ? 'entrenamiento' : 'entrenamientos'}
+          {weeks > 0 && <> · racha de {weeks} {weeks === 1 ? 'semana' : 'semanas'}</>}
+        </p>
       </header>
 
       <HealthNoticeCompact safety={program.safety} />

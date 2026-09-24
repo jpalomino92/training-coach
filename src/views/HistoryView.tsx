@@ -8,10 +8,31 @@ import { Icon } from '../components/Icon';
 import { fmtMonthYear, fmtNum, fmtWeekdayShort, weightRange } from '../domain/format';
 import { findExercise, findExerciseAnywhere, routinePrograms } from '../domain/routines';
 import type { Workout, WorkoutSet } from '../domain/types';
+import { recordSetIds } from '../domain/records';
 import { byStartDesc, setsOf, totalSets } from '../domain/workout';
 import { useApp } from '../state/AppContext';
 
-function HistoryCard({ w, sets, open, onToggle }: { w: Workout; sets: WorkoutSet[]; open: boolean; onToggle(): void }) {
+/** Series que fueron récord personal en su momento, por rutina y ejercicio. */
+function allRecordIds(workouts: Workout[], sets: WorkoutSet[]): Set<string> {
+  const out = new Set<string>();
+  const when = new Map(workouts.map(w => [w.id, +new Date(w.completed_at || w.started_at)]));
+  const program = new Map(workouts.map(w => [w.id, w.program_id]));
+  const groups = new Map<string, WorkoutSet[]>();
+  for (const s of sets) {
+    const k = `${program.get(s.workout_id)}|${s.exercise_key}`;
+    groups.set(k, [...(groups.get(k) || []), s]);
+  }
+  for (const [k, list] of groups) {
+    const [pid, key] = k.split('|');
+    const ex = (routinePrograms[pid] && findExercise(routinePrograms[pid], key)) || findExerciseAnywhere(key);
+    if (!ex) continue;
+    list.sort((a, b) => (when.get(a.workout_id)! - when.get(b.workout_id)!) || a.set_index - b.set_index);
+    recordSetIds(ex, list).forEach(id => out.add(id));
+  }
+  return out;
+}
+
+function HistoryCard({ w, sets, open, onToggle, records }: { w: Workout; sets: WorkoutSet[]; open: boolean; onToggle(): void; records: Set<string> }) {
   const { deleteWorkout, showToast, program: current } = useApp();
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -63,6 +84,7 @@ function HistoryCard({ w, sets, open, onToggle }: { w: Workout; sets: WorkoutSet
                 <li key={k}>
                   <b>{ex?.name || k}</b>
                   <span>{line}</span>
+                  {ss.some(x => records.has(x.id)) && <span className="pr-mark"><Icon name="trophy" />Récord personal</span>}
                   {w.feel?.[k] === 'pain' && <span className="pain-mark">Marcado con dolor articular, de espalda o neurológico.</span>}
                 </li>
               );
@@ -90,6 +112,7 @@ export function HistoryView() {
   const { data, setTab } = useApp();
   const [open, setOpen] = useState<string | null>(null);
   const list = data.workouts.slice().sort(byStartDesc);
+  const records = allRecordIds(data.workouts, data.sets);
 
   if (!list.length) {
     return (
@@ -119,7 +142,7 @@ export function HistoryView() {
         <section key={g.label} className="stack-sm" aria-label={g.label}>
           <h2 className="eyebrow">{g.label}</h2>
           {g.items.map(w => (
-            <HistoryCard key={w.id} w={w} sets={setsOf(data, w.id)} open={open === w.id} onToggle={() => setOpen(open === w.id ? null : w.id)} />
+            <HistoryCard key={w.id} w={w} sets={setsOf(data, w.id)} records={records} open={open === w.id} onToggle={() => setOpen(open === w.id ? null : w.id)} />
           ))}
         </section>
       ))}

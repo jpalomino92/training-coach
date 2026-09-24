@@ -128,3 +128,7 @@
 }
 .last .g .stat span{white-space:nowrap}
 @media (max-width:389px){.last .g{gap:12px}.last.many .g .stat b{font-size:22px}}
+/* Récord personal: aro y texto en el color del día, con icono (no solo color) */
+.set-done.pr{box-shadow:inset 0 0 0 2px var(--day)}
+.set-done.pr .ck{background:var(--day);color:var(--day-ink)}
+.set-done .pr-text{color:var(--day-text)}

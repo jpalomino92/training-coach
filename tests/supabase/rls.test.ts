@@ -91,6 +91,15 @@ describe('Row Level Security en Supabase', () => {
     expect(r.error).not.toBeNull();
   });
 
+  it('guarda las preferencias (columna prefs: migrations/2026-09-25_prefs.sql)', async () => {
+    const d = await A.store.loadAll();
+    const { id: _i, user_id: _u, updated_at: _up, ...rest } = d.profile!;
+    await A.store.saveProfile({ ...rest, prefs: { rest_mode: 'custom', rest_compound: 120, rest_accessory: 60 } });
+    expect((await A.store.loadAll()).profile?.prefs).toMatchObject({ rest_mode: 'custom', rest_compound: 120, rest_accessory: 60 });
+    // B no puede leerlas
+    expect((await B.c.from('profiles').select('prefs').eq('user_id', A.id)).data).toEqual([]);
+  });
+
   it('un visitante sin sesión no puede leer nada', async () => {
     for (const t of TABLES) {
       const r = await anon.from(t).select('*');

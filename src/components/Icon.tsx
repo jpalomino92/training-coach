@@ -24,7 +24,12 @@ const PATHS = {
   pencil: <path d="M4 20l1-4L16 5l3 3L8 19zM14 7l3 3" />,
   copy: <><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" /></>,
   calendar: <><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M8 3v4M16 3v4" /></>,
-  logout: <path d="M10 5H5v14h5M15 8l4 4-4 4M19 12H9" />
+  logout: <path d="M10 5H5v14h5M15 8l4 4-4 4M19 12H9" />,
+  trophy: <><path d="M8 4h8v5a4 4 0 0 1-8 0z" /><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M9 20h6M10 17h4" /></>,
+  upload: <path d="M12 16V4M7 9l5-5 5 5M5 20h14" />,
+  download: <path d="M12 4v12M7 11l5 5 5-5M5 20h14" />,
+  key: <><circle cx="8" cy="14" r="4" /><path d="M11 11l8-8M16 6l3 3M14 8l2 2" /></>,
+  sound: <><path d="M4 10v4h4l5 4V6L8 10z" /><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" /></>
 } as const;
 
 export type IconName = keyof typeof PATHS;

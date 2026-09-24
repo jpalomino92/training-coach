@@ -20,10 +20,14 @@ create table if not exists public.profiles (
   health_notice_ack_at timestamptz,
   theme text not null default 'auto' check (theme in ('auto', 'light', 'dark')),
   show_body_weight boolean not null default true,
+  prefs jsonb not null default '{}'::jsonb,   -- descansos personalizados, sonido, pantalla encendida...
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint profiles_id_is_user check (id = user_id)
 );
+
+-- Proyectos creados con una versión anterior de este archivo (migrations/2026-09-25_prefs.sql)
+alter table public.profiles add column if not exists prefs jsonb not null default '{}'::jsonb;
 
 -- ---------- Entrenamientos ----------
 create table if not exists public.workouts (

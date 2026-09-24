@@ -6,8 +6,10 @@
    ========================================================== */
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
 import { getProgram } from '../domain/routines';
+import type { ImportedWorkout } from '../domain/csv';
+import { prefsOf } from '../domain/prefs';
 import type {
-  AuthUser, BodyWeightInput, Exercise, Feel, Profile, ProfileInput, Program, UserData, Workout, WorkoutDay, WorkoutSet
+  AuthUser, BodyWeightInput, Exercise, Feel, Prefs, Profile, ProfileInput, Program, UserData, Workout, WorkoutDay, WorkoutSet
 } from '../domain/types';
 import { activeWorkout, defaultDayId, isDayDone, setsOf } from '../domain/workout';
 import { createBackend, type Backend } from '../services/backend';
@@ -15,7 +17,8 @@ import { emptyData, isSyncSource, type Store, type SyncState } from '../services
 import { dataReducer } from './dataReducer';
 
 export type Tab = 'hoy' | 'rutina' | 'progreso' | 'historial' | 'perfil';
-export type Status = 'loading' | 'error' | 'signedOut' | 'ready';
+/** recovery: se abrió desde el enlace del email para elegir una contraseña nueva. */
+export type Status = 'loading' | 'error' | 'signedOut' | 'recovery' | 'ready';
 
 export interface SetValues { weight: number | null; reps: number; rir: number | null }
 
@@ -37,12 +40,24 @@ export interface AppApi {
   showToast(msg: string): void;
   /** Estado de la cola sin conexión (null en modo demo, que siempre es local). */
   sync: SyncState | null;
+  /** Ajustes con sus valores por defecto. */
+  prefs: Prefs;
+  /** Aviso para la pantalla de acceso (p. ej. enlace de recuperación caducado). */
+  authNotice: string;
 
   signIn(email: string, password: string): Promise<void>;
   signUp(email: string, password: string): Promise<void>;
   signOut(): Promise<void>;
   saveProfile(p: ProfileInput): Promise<void>;
   updatePrefs(p: Partial<Pick<Profile, 'theme' | 'show_body_weight'>>): Promise<void>;
+  updateSettings(p: Partial<Prefs>): Promise<void>;
+  requestPasswordReset(email: string): Promise<void>;
+  changePassword(current: string, next: string): Promise<void>;
+  /** Guarda la contraseña nueva al venir del enlace de recuperación y entra en la app. */
+  completeRecovery(next: string): Promise<void>;
+  /** Importa registros de un CSV. Devuelve cuántos se guardaron. */
+  importBodyWeights(rows: BodyWeightInput[]): Promise<number>;
+  importWorkouts(workouts: ImportedWorkout[]): Promise<number>;
 
   /** Registra (o corrige) una serie. Devuelve si con ella se completó el día. */
   recordSet(day: WorkoutDay, ex: Exercise, index: number, v: SetValues): Promise<{ set: WorkoutSet; dayCompleted: boolean }>;
@@ -76,6 +91,7 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
   const [editingProfile, setEditingProfile] = useState(false);
   const [toast, setToast] = useState('');
   const [sync, setSync] = useState<SyncState | null>(null);
+  const [authNotice, setAuthNotice] = useState('');
   const unsubSync = useRef<(() => void) | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -128,7 +144,13 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
         setBackend(b);
         const session = await b.auth.getSession();
         if (!alive) return;
-        if (session) await loadUser(b, session); else setStatus('signedOut');
+        if (b.auth.recoveryFailed()) {
+          b.auth.finishRecovery();
+          setAuthNotice('El enlace para cambiar la contraseña ha caducado o ya se usó. Pide uno nuevo.');
+        }
+        if (session && b.auth.isRecovery()) setStatus('recovery');
+        else if (session) await loadUser(b, session);
+        else setStatus('signedOut');
       } catch (e) {
         console.error(e);
         if (!alive) return;
@@ -159,8 +181,10 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
   const api: AppApi = {
     status, bootError, mode: backend?.auth.mode || 'demo', user, data, profile, program,
     tab, setTab, dayId, setDayId, editingProfile, setEditingProfile, toast, showToast, sync,
+    prefs: prefsOf(profile), authNotice,
 
     async signIn(email, password) {
+      setAuthNotice('');
       const u = await backend!.auth.signIn(email, password);
       await loadUser(backend!, u);
     },
@@ -170,6 +194,7 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
     },
     async signOut() {
       const pending = sync?.pending || 0;
+      backend!.auth.finishRecovery();
       await backend!.auth.signOut();
       releaseStore();
       if (pending) showToast(`Quedan ${pending} ${pending === 1 ? 'cambio' : 'cambios'} por enviar: se enviarán cuando vuelvas a entrar con conexión.`);
@@ -179,6 +204,43 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
       setTabState('hoy');
       setDayId('');
       setStatus('signedOut');
+    },
+    async updateSettings(patch) {
+      if (!data.profile) return;
+      const { id: _id, user_id: _u, updated_at: _up, ...rest } = data.profile;
+      const saved = await store().saveProfile({ ...rest, prefs: { ...data.profile.prefs, ...patch } });
+      dispatch({ type: 'profile', profile: saved });
+    },
+    async requestPasswordReset(email) {
+      await backend!.auth.requestPasswordReset(email);
+    },
+    async changePassword(current, next) {
+      await backend!.auth.updatePassword(next, current);
+    },
+    async completeRecovery(next) {
+      await backend!.auth.updatePassword(next);
+      backend!.auth.finishRecovery();
+      const u = await backend!.auth.getSession();
+      if (u) await loadUser(backend!, u); else setStatus('signedOut');
+      showToast('Contraseña cambiada.');
+    },
+    async importBodyWeights(rows) {
+      let n = 0;
+      for (const r of rows) { dispatch({ type: 'bodyWeight', bodyWeight: await store().addBodyWeight(r) }); n++; }
+      return n;
+    },
+    async importWorkouts(list) {
+      let n = 0;
+      for (const iw of list) {
+        const at = new Date(`${iw.date}T12:00:00`).toISOString();
+        const w = await store().createWorkout({ program_id: program.id, day_id: iw.dayId, status: 'completed', started_at: at, feel: {} });
+        dispatch({ type: 'workout', workout: await store().updateWorkout(w.id, { status: 'completed', completed_at: at }) });
+        for (const s of iw.sets) {
+          dispatch({ type: 'set', set: await store().upsertSet({ workout_id: w.id, exercise_key: s.exercise.key, set_index: s.set_index, weight: s.weight, reps: s.reps, rir: s.rir }) });
+          n++;
+        }
+      }
+      return n;
     },
     async saveProfile(p) {
       const prev = data.profile;

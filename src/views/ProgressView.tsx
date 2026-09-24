@@ -4,6 +4,7 @@ import { Button } from '../components/Button';
 import { Sparkline } from '../components/Charts';
 import { ExerciseIllustration } from '../components/ExerciseIllustration';
 import { fmtDate, fmtNum, DAY_MS, toDate } from '../domain/format';
+import { streak, weeklyCounts, weeklyGoal } from '../domain/consistency';
 import { exerciseProgress, type ExerciseProgress } from '../domain/workout';
 import { useApp } from '../state/AppContext';
 import { BodyWeightPanel } from './BodyWeightPanel';
@@ -33,6 +34,34 @@ function ProgressCard({ p }: { p: ExerciseProgress }) {
         <span>Semana {first[0]} → <b>{v(first[1])}</b></span>
         {p.weeks.length >= 2 && <span>Semana {last[0]} → <b>{v(last[1])}</b></span>}
       </div>
+    </section>
+  );
+}
+
+/** Constancia: entrenamientos completados en las últimas 8 semanas frente al objetivo semanal. */
+function Consistency() {
+  const { data, program } = useApp();
+  const goal = weeklyGoal(program);
+  const weeks = weeklyCounts(data.workouts, 8);
+  const run = streak(data.workouts, goal);
+  const max = Math.max(goal, ...weeks.map(w => w.count));
+  const label = (start: string) => { const [, m, d] = start.split('-'); return `${d}/${m}`; };
+  return (
+    <section className="card consistency" aria-labelledby="cons-t">
+      <div className="hd">
+        <h2 className="h3" id="cons-t">Constancia</h2>
+        <span className="sm muted">Objetivo: {goal} por semana</span>
+      </div>
+      <p className="sm">{run > 0 ? <>Racha: <b>{run} {run === 1 ? 'semana' : 'semanas'}</b> cumpliendo el objetivo.</> : 'Completa tu objetivo esta semana para empezar una racha.'}</p>
+      <ol className="bars" aria-label="Entrenamientos completados por semana">
+        {weeks.map((w, i) => (
+          <li key={w.start} className={w.count >= goal ? 'met' : ''} aria-label={`Semana del ${label(w.start)}: ${w.count} de ${goal}${w.count >= goal ? ', objetivo cumplido' : ''}`}>
+            <span className="bar-v" style={{ height: `${(w.count / max) * 100}%` }} aria-hidden="true" />
+            <span className="n" aria-hidden="true">{w.count}</span>
+            <span className="d" aria-hidden="true">{i === weeks.length - 1 ? 'Esta' : label(w.start)}</span>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
@@ -72,6 +101,7 @@ export function ProgressView() {
             <div className="card tile"><b>{completed}</b><span>{completed === 1 ? 'entrenamiento completado' : 'entrenamientos completados'}</span></div>
             <div className="card tile"><b>{weeks}</b><span>{weeks === 1 ? 'semana' : 'semanas'} desde el inicio</span><span className="xs muted">{fmtDate(profile.start_date)}</span></div>
           </div>
+          <Consistency />
           <div className="filters" role="group" aria-label="Filtrar por día">
             <button type="button" aria-pressed={filter === null} onClick={() => setFilter(null)}>Todos</button>
             {program.days.map(d => (

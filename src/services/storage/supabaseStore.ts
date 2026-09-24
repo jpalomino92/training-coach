@@ -42,7 +42,7 @@ export class SupabaseStore implements Store {
     (this.chk<ExerciseNote[]>(n) || []).forEach(r => { notes[r.exercise_key] = r; });
     const profile = this.chk<Profile | null>(p);
     return {
-      profile: profile ? { ...profile, age: numOrNull(profile.age) } : null,
+      profile: profile ? { ...profile, age: numOrNull(profile.age), prefs: profile.prefs || {} } : null,
       workouts: (this.chk<Workout[]>(w) || []).map(x => ({ ...x, feel: x.feel || {}, notes: x.notes || '' })),
       sets: (this.chk<WorkoutSet[]>(s) || []).map(toSet),
       notes,

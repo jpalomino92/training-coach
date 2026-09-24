@@ -75,6 +75,9 @@ for (const [label, width, height] of WIDTHS) for (const theme of THEMES) {
     await page.getByLabel('Repite la contraseña').fill('1234');
     await page.getByRole('form', { name: 'Crear cuenta' }).getByRole('button', { name: 'Crear cuenta' }).click();
     await shot('crear-cuenta-errores');
+    await page.getByRole('button', { name: 'Iniciar sesión' }).first().click();
+    await page.getByRole('button', { name: '¿Olvidaste tu contraseña?' }).click();
+    await shot('recuperar-contrasena');
 
     // Carmen: rutina de 56 años, primera vez
     await signUp(page, 'carmen@correo.com');
@@ -167,6 +170,13 @@ for (const [label, width, height] of WIDTHS) for (const theme of THEMES) {
     await shot('historial-confirmar-borrado');
     await tab(page, 'Perfil');
     await shot('perfil');
+    await page.getByRole('switch', { name: 'Usar los descansos de la rutina' }).click();
     await shot('perfil-completo', { full: true });
+    await page.getByRole('button', { name: 'Importar CSV' }).click();
+    await page.getByRole('dialog', { name: 'Importar CSV' }).getByLabel(/Elige un archivo CSV/).setInputFiles({ name: 'peso.csv', mimeType: 'text/csv', buffer: Buffer.from(['fecha;peso_kg;nota', '21/09/2026;73,9;', '22/09/2026;73,8;', 'ayer;70;'].join('\n')) });
+    await shot('hoja-importar-csv');
+    await page.getByRole('dialog', { name: 'Importar CSV' }).getByRole('button', { name: 'Cancelar' }).click();
+    await page.getByRole('button', { name: 'Cambiar contraseña' }).click();
+    await shot('hoja-cambiar-contrasena');
   });
 }

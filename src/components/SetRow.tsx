@@ -11,12 +11,12 @@ export function SetPending({ index }: { index: number }) {
   return <div className="set-todo">Serie {index + 1} · pendiente</div>;
 }
 
-export function SetDone({ set, ex, fresh, onEdit }: { set: WorkoutSet; ex: Exercise; fresh?: boolean; onEdit(): void }) {
+export function SetDone({ set, ex, fresh, record, onEdit }: { set: WorkoutSet; ex: Exercise; fresh?: boolean; record?: string; onEdit(): void }) {
   return (
-    <div className={`set-done${fresh ? ' fresh' : ''}`}>
-      <span className="ck" aria-hidden="true"><Icon name="check" /></span>
+    <div className={`set-done${fresh ? ' fresh' : ''}${fresh && record ? ' pr' : ''}`}>
+      <span className="ck" aria-hidden="true"><Icon name={fresh && record ? 'trophy' : 'check'} /></span>
       {fresh ? (
-        <span className="tx" role="status"><b>✓ Serie registrada</b><br />{setText(ex, set)}</span>
+        <span className="tx" role="status"><b>✓ Serie registrada</b><br />{setText(ex, set)}{record && <><br /><b className="pr-text">{record}</b></>}</span>
       ) : (
         <span className="tx"><b>Serie {set.set_index + 1}</b> · {setText(ex, set)}</span>
       )}

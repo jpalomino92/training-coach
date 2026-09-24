@@ -1,12 +1,46 @@
-/* PERFIL: datos, apariencia, peso corporal, copiar mis datos y cerrar sesión. */
-import { useState } from 'react';
+/* PERFIL: datos, apariencia, peso corporal, descanso, ayudas durante el entrenamiento,
+   importar/exportar CSV, contraseña, copiar mis datos y cerrar sesión. */
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
+import { RestStepper } from '../components/RestStepper';
 import { SwitchRow } from '../components/Switch';
-import { fmtDate, fmtDayMonth, toDate } from '../domain/format';
-import type { ThemePref } from '../domain/types';
+import { exportBodyWeightsCsv, exportSetsCsv } from '../domain/csv';
+import { fmtDate, fmtDayMonth, localDate, toDate } from '../domain/format';
+import type { Prefs, ThemePref } from '../domain/types';
+import { downloadText } from '../services/download';
 import { useApp } from '../state/AppContext';
+import { ImportSheet } from './ImportSheet';
+import { ChangePasswordSheet } from './PasswordSheets';
+
+const wakeLockSupported = () => typeof navigator !== 'undefined' && 'wakeLock' in navigator;
+
+/** Ajustes que se guardan al momento (los tiempos de descanso, medio segundo después del último toque). */
+function useSettings() {
+  const { prefs, updateSettings, showToast } = useApp();
+  const [draft, setDraft] = useState<Prefs>(prefs);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const pending = useRef<Partial<Prefs>>({});
+  const flush = () => {
+    clearTimeout(timer.current);
+    const patch = pending.current;
+    pending.current = {};
+    if (Object.keys(patch).length) updateSettings(patch).catch(e => showToast(e instanceof Error ? e.message : 'No se pudo guardar.'));
+  };
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+  // Al salir de Perfil se guarda lo pendiente
+  useEffect(() => () => flushRef.current(), []);
+  /** Los cambios pendientes se acumulan y se guardan juntos. */
+  const save = (patch: Partial<Prefs>, delay = 0) => {
+    setDraft(d => ({ ...d, ...patch }));
+    pending.current = { ...pending.current, ...patch };
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => flushRef.current(), delay);
+  };
+  return { draft, save };
+}
 
 const THEMES: { value: ThemePref; label: string }[] = [
   { value: 'auto', label: 'Automático' },
@@ -16,7 +50,9 @@ const THEMES: { value: ThemePref; label: string }[] = [
 
 export function ProfileView() {
   const { profile, user, data, program, updatePrefs, setEditingProfile, signOut, showToast, mode } = useApp();
+  const { draft, save } = useSettings();
   const [exportText, setExportText] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<'import' | 'password' | null>(null);
   const [busy, setBusy] = useState(false);
   if (!profile || !user) return null;
   const completed = data.workouts.filter(w => w.status === 'completed').length;
@@ -82,8 +118,43 @@ export function ProfileView() {
           onChange={v => pref({ show_body_weight: v })} />
       </section>
 
+      <section className="card" aria-labelledby="p-descanso">
+        <div className="card-pad" style={{ paddingBottom: 0 }}><h2 className="eyebrow" id="p-descanso">Descanso</h2></div>
+        <SwitchRow title="Usar los descansos de la rutina" checked={draft.rest_mode === 'routine'}
+          description={draft.rest_mode === 'routine' ? 'Cada ejercicio usa el descanso que indica tu rutina.' : 'Usas tus propios tiempos. La rutina no cambia.'}
+          onChange={v => save({ rest_mode: v ? 'routine' : 'custom' })} />
+        {draft.rest_mode === 'custom' && (
+          <div className="rest-custom">
+            <RestStepper label="Ejercicios básicos" hint="Sentadilla, press, remos, peso muerto…" value={draft.rest_compound}
+              onChange={v => save({ rest_compound: v }, 500)} />
+            <RestStepper label="Accesorios" hint="Máquinas, aislamiento y core." value={draft.rest_accessory}
+              onChange={v => save({ rest_accessory: v }, 500)} />
+          </div>
+        )}
+      </section>
+
+      <section className="card" aria-labelledby="p-entreno">
+        <div className="card-pad" style={{ paddingBottom: 0 }}><h2 className="eyebrow" id="p-entreno">Durante el entrenamiento</h2></div>
+        <SwitchRow title="Sonido al terminar el descanso" checked={draft.sound}
+          description="Dos pitidos cortos, además de la vibración (en iPhone no hay vibración)." onChange={v => save({ sound: v })} />
+        <SwitchRow title="Mantener la pantalla encendida" checked={draft.keep_awake && wakeLockSupported()}
+          description={wakeLockSupported() ? 'Mientras tengas un entrenamiento en curso. Gasta algo más de batería.' : 'Tu navegador no lo permite.'}
+          onChange={v => { if (wakeLockSupported()) save({ keep_awake: v }); }} />
+      </section>
+
+      <section className="card card-pad" aria-labelledby="p-datos-csv">
+        <h2 className="eyebrow" id="p-datos-csv">Importar y exportar</h2>
+        <Button variant="secondary" block icon="upload" onClick={() => setSheet('import')}>Importar CSV</Button>
+        <div className="btn-row">
+          <Button variant="secondary" small icon="download" onClick={() => downloadText(`peso-corporal-${localDate()}.csv`, exportBodyWeightsCsv(data))}>Peso (CSV)</Button>
+          <Button variant="secondary" small icon="download" onClick={() => downloadText(`historial-${localDate()}.csv`, exportSetsCsv(data))}>Series (CSV)</Button>
+        </div>
+        <p className="hint">Importa tu historial de pesos (del peso corporal o de los ejercicios) desde otra app o una hoja de cálculo.</p>
+      </section>
+
       <div className="stack-sm">
         <Button variant="secondary" block icon="pencil" onClick={() => setEditingProfile(true)}>Editar perfil</Button>
+        <Button variant="secondary" block icon="key" onClick={() => setSheet('password')}>Cambiar contraseña</Button>
         <Button variant="secondary" block icon="copy" onClick={copy} aria-describedby="copy-hint">Copiar mis datos</Button>
         <p className="hint tc" id="copy-hint">Copia tu perfil e historial como texto para guardarlo donde quieras.</p>
         <Button variant="link" icon="logout" onClick={logout} loading={busy} style={{ alignSelf: 'center' }}>Cerrar sesión</Button>
@@ -92,6 +163,9 @@ export function ProfileView() {
       {mode === 'demo' && (
         <div className="note demo-note"><Icon name="info" /><p><b>Modo demo.</b> Tus datos se guardan solo en este navegador. Cerrar sesión no borra tu progreso, pero borrar los datos del navegador sí. Usa "Copiar mis datos" para tener una copia.</p></div>
       )}
+
+      {sheet === 'import' && <ImportSheet onClose={() => setSheet(null)} />}
+      {sheet === 'password' && <ChangePasswordSheet onClose={() => setSheet(null)} />}
 
       {exportText !== null && (
         <Sheet title="Copiar mis datos" onClose={() => setExportText(null)} closeLabel="Cerrar">

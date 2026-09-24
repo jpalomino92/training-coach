@@ -41,6 +41,13 @@ tests/unit, tests/e2e    Vitest + Testing Library, Playwright
 legacy/                  Prototipo original (fuera del build), solo como referencia
 ```
 
+## Funciones
+
+- **Hoy**: una serie a la vez, rellenada con la última sesión; temporizador de descanso (sonido y vibración al terminar, pantalla encendida opcional); sensación por ejercicio; notas; récords personales al superar tu mejor marca; constancia semanal ("Esta semana: 2 de 4").
+- **Perfil → Descanso**: los descansos de la rutina o los tuyos (básicos y accesorios por separado). Los datos de la rutina no cambian.
+- **Perfil → Importar y exportar**: CSV de peso corporal y del historial de series (`,` o `;`, coma decimal, fechas `dd/mm/aaaa` o `aaaa-mm-dd`), con vista previa y errores por línea. Plantillas descargables.
+- **Contraseña**: "¿Olvidaste tu contraseña?" envía un enlace (modo Supabase) y "Cambiar contraseña" en Perfil.
+
 ## Rutinas
 
 Los programas son solo datos (`src/domain/routines.ts`). Para añadir uno, copia una entrada de `routinePrograms`, cambia el `id` y los datos; la interfaz no se toca. Cada ejercicio tiene `weightStep` (2,5 kg por defecto; 1 kg con mancuernas y en la rutina de 56 años). Las rutinas con `safety.requiresHealthNotice` exigen aceptar el aviso de salud al elegirlas.
@@ -58,7 +65,9 @@ Los programas son solo datos (`src/domain/routines.ts`). Para añadir uno, copia
 
 1. Crea el proyecto y ejecuta `supabase/schema.sql` en SQL Editor.
 2. Authentication → Sign In / Providers → Email: con "Confirm email" activado, la app pide confirmar el correo antes de iniciar sesión.
-3. Authentication → URL Configuration: pon la URL pública de la app en **Site URL** (para los enlaces de confirmación).
+3. Authentication → URL Configuration: pon la URL pública de la app en **Site URL** y añade `https://TU-APP/**` en **Redirect URLs** (enlaces de confirmación y de recuperación de contraseña, que vuelven a `/?recuperar=1`).
+   Para enviar correos a cualquier persona hace falta un SMTP propio (Authentication → Emails → SMTP Settings): el servicio de correo incluido en Supabase solo envía a los miembros del equipo del proyecto y muy pocos por hora.
+   Si el proyecto se creó con una versión anterior de `schema.sql`, ejecuta las migraciones de `supabase/migrations/` en orden.
 4. Pruebas contra el proyecto real (usan `.env.supabase.local`, que no se sube al repositorio):
    - `npm run test:supabase` → Row Level Security: un usuario no puede leer, cambiar, borrar ni escribir datos de otro.
    - `npm run test:e2e:supabase` → la app de producción (con service worker) conectada a Supabase, incluido el uso sin conexión.

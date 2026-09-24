@@ -55,7 +55,7 @@ export class LocalStore implements Store {
   async loadAll(): Promise<UserData> {
     const d = this.read();
     return structuredClone({
-      profile: this.own(d.profile) ? d.profile : null,
+      profile: this.own(d.profile) ? { ...d.profile, prefs: d.profile.prefs || {} } : null,
       workouts: d.workouts.filter(this.own),
       sets: d.sets.filter(this.own),
       notes: Object.fromEntries(Object.entries(d.notes).filter(([, n]) => this.own(n))),
@@ -66,7 +66,7 @@ export class LocalStore implements Store {
   async saveProfile(p: ProfileInput): Promise<Profile> {
     const d = this.read();
     const now = nowIso();
-    d.profile = { ...p, id: this.userId, user_id: this.userId, created_at: d.profile?.created_at || p.created_at || now, updated_at: now };
+    d.profile = { ...p, prefs: p.prefs ?? d.profile?.prefs ?? {}, id: this.userId, user_id: this.userId, created_at: d.profile?.created_at || p.created_at || now, updated_at: now };
     this.write();
     return { ...d.profile };
   }

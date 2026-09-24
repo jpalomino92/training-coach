@@ -64,6 +64,21 @@ export interface Program {
   days: WorkoutDay[];
 }
 
+/* ---------- Preferencias del usuario (profiles.prefs, jsonb) ---------- */
+
+export interface Prefs {
+  /** 'routine': descansos de la rutina. 'custom': los dos valores de abajo. */
+  rest_mode: 'routine' | 'custom';
+  /** Segundos de descanso en ejercicios básicos (compound). */
+  rest_compound: number;
+  /** Segundos de descanso en accesorios. */
+  rest_accessory: number;
+  /** Sonido al terminar el descanso. */
+  sound: boolean;
+  /** Mantener la pantalla encendida con un entrenamiento en curso. */
+  keep_awake: boolean;
+}
+
 /* ---------- Registros (todos llevan user_id) ---------- */
 
 export interface Profile {
@@ -79,11 +94,13 @@ export interface Profile {
   health_notice_ack_at: string | null;
   theme: ThemePref;
   show_body_weight: boolean;
+  /** Ajustes; los que falten toman el valor por defecto (ver domain/prefs.ts). */
+  prefs: Partial<Prefs>;
   created_at: string;
   updated_at: string;
 }
 
-export type ProfileInput = Omit<Profile, 'id' | 'user_id' | 'created_at' | 'updated_at'> & { created_at?: string };
+export type ProfileInput = Omit<Profile, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'prefs'> & { created_at?: string; prefs?: Partial<Prefs> };
 
 export interface Workout {
   id: string;
