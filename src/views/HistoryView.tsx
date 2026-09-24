@@ -8,15 +8,14 @@ import { MonthCalendar } from '../components/MonthCalendar';
 import { Icon } from '../components/Icon';
 import { fmtMonthYear, fmtNum, fmtWeekdayShort, weightRange } from '../domain/format';
 import { baseKey, resolveExercise } from '../domain/alternatives';
-import { routinePrograms } from '../domain/routines';
-import type { Workout, WorkoutSet } from '../domain/types';
+import type { ProgramLookup, Workout, WorkoutSet } from '../domain/types';
 import { recordSetIds } from '../domain/records';
 import { fmtMinutes, fmtThousands, workoutSummary } from '../domain/summary';
 import { byStartDesc, setsOf, totalSets } from '../domain/workout';
 import { useApp } from '../state/AppContext';
 
 /** Series que fueron récord personal en su momento, por rutina y ejercicio. */
-function allRecordIds(workouts: Workout[], sets: WorkoutSet[]): Set<string> {
+function allRecordIds(workouts: Workout[], sets: WorkoutSet[], lookup: ProgramLookup): Set<string> {
   const out = new Set<string>();
   const when = new Map(workouts.map(w => [w.id, +new Date(w.completed_at || w.started_at)]));
   const program = new Map(workouts.map(w => [w.id, w.program_id]));
@@ -27,7 +26,7 @@ function allRecordIds(workouts: Workout[], sets: WorkoutSet[]): Set<string> {
   }
   for (const [k, list] of groups) {
     const [pid, key] = k.split('|');
-    const ex = resolveExercise(routinePrograms[pid], key);
+    const ex = resolveExercise(lookup(pid), key);
     if (!ex) continue;
     list.sort((a, b) => (when.get(a.workout_id)! - when.get(b.workout_id)!) || a.set_index - b.set_index);
     recordSetIds(ex, list).forEach(id => out.add(id));
@@ -36,13 +35,13 @@ function allRecordIds(workouts: Workout[], sets: WorkoutSet[]): Set<string> {
 }
 
 function HistoryCard({ w, sets, open, onToggle, records }: { w: Workout; sets: WorkoutSet[]; open: boolean; onToggle(): void; records: Set<string> }) {
-  const { deleteWorkout, showToast, program: current, data } = useApp();
+  const { deleteWorkout, showToast, program: current, data, lookup } = useApp();
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
   useEffect(() => { if (confirm) cancelRef.current?.focus(); }, [confirm]);
 
-  const pr = routinePrograms[w.program_id];
+  const pr = lookup(w.program_id);
   const day = pr?.days.find(d => d.id === w.day_id);
   const total = day ? totalSets(day) : sets.length;
   const dateIso = w.completed_at || w.started_at;
@@ -73,7 +72,7 @@ function HistoryCard({ w, sets, open, onToggle, records }: { w: Workout; sets: W
       {open && (
         <div id={`h-${w.id}`} className="stack-sm">
           {(() => {
-            const s = workoutSummary(data, w);
+            const s = workoutSummary(data, w, lookup);
             const bits = [s.minutes != null ? fmtMinutes(s.minutes) : '', s.volume > 0 ? `${fmtThousands(s.volume)} kg de volumen` : ''].filter(Boolean);
             return bits.length ? <p className="sm muted">{bits.join(' · ')}</p> : null;
           })()}
@@ -118,10 +117,10 @@ function HistoryCard({ w, sets, open, onToggle, records }: { w: Workout; sets: W
 }
 
 export function HistoryView() {
-  const { data, setTab } = useApp();
+  const { data, setTab, lookup } = useApp();
   const [open, setOpen] = useState<string | null>(null);
   const list = data.workouts.slice().sort(byStartDesc);
-  const records = allRecordIds(data.workouts, data.sets);
+  const records = allRecordIds(data.workouts, data.sets, lookup);
 
   if (!list.length) {
     return (
@@ -147,7 +146,7 @@ export function HistoryView() {
   return (
     <main className="screen">
       <h1 className="h1">Historial</h1>
-      <MonthCalendar workouts={data.workouts} onPick={id => {
+      <MonthCalendar workouts={data.workouts} lookup={lookup} onPick={id => {
         setOpen(id);
         requestAnimationFrame(() => document.getElementById(`hist-${id}`)?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
       }} />

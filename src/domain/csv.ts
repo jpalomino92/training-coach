@@ -6,8 +6,8 @@
    ========================================================== */
 import { fmtNum, localDate, parseNum } from './format';
 import { altExercise, baseKey, resolveExercise } from './alternatives';
-import { programList } from './routines';
-import type { BodyWeightInput, Exercise, Program, UserData } from './types';
+import { builtinLookup, programList } from './routines';
+import type { BodyWeightInput, Exercise, Program, ProgramLookup, UserData } from './types';
 
 export interface CsvError { line: number; message: string }
 
@@ -182,11 +182,11 @@ export function exportBodyWeightsCsv(data: Pick<UserData, 'bodyWeights'>): strin
   return toCsv([['fecha', 'peso_kg', 'nota'], ...rows]);
 }
 
-export function exportSetsCsv(data: Pick<UserData, 'workouts' | 'sets'>): string {
+export function exportSetsCsv(data: Pick<UserData, 'workouts' | 'sets'>, lookup: ProgramLookup = builtinLookup): string {
   const rows: (string | number | null)[][] = [];
   const workouts = data.workouts.slice().sort((a, b) => +new Date(a.completed_at || a.started_at) - +new Date(b.completed_at || b.started_at));
   for (const w of workouts) {
-    const program = programList().find(p => p.id === w.program_id);
+    const program = lookup(w.program_id);
     const day = program?.days.find(d => d.id === w.day_id);
     const date = localDate(new Date(w.completed_at || w.started_at));
     const sets = data.sets.filter(s => s.workout_id === w.id).sort((a, b) => a.exercise_key.localeCompare(b.exercise_key) || a.set_index - b.set_index);

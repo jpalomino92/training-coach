@@ -5,12 +5,13 @@
    después se reflejan en memoria con el reducer.
    ========================================================== */
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
-import { getProgram } from '../domain/routines';
+import { builtinLookup, getProgram } from '../domain/routines';
 import type { ImportedWorkout } from '../domain/csv';
 import { prefsOf } from '../domain/prefs';
 import type {
-  AuthUser, BodyWeightInput, Exercise, Feel, Prefs, Profile, ProfileInput, Program, UserData, Workout, WorkoutDay, WorkoutSet
+  AuthUser, BodyWeightInput, Exercise, Feel, Prefs, Profile, ProfileInput, Program, ProgramLookup, UserData, Workout, WorkoutDay, WorkoutSet
 } from '../domain/types';
+import type { CoachInfo, CoachLink, CoachService } from '../services/coach';
 import { activeWorkout, defaultDayId, isDayDone, setsOf } from '../domain/workout';
 import { createBackend, type Backend } from '../services/backend';
 import { emptyData, isSyncSource, type Store, type SyncState } from '../services/storage/types';
@@ -44,6 +45,21 @@ export interface AppApi {
   sync: SyncState | null;
   /** Ajustes con sus valores por defecto. */
   prefs: Prefs;
+  /** Busca cualquier rutina: las incluidas y las propias que puede ver este usuario. */
+  lookup: ProgramLookup;
+  /** Servicio de entrenador/alumno (null en modo demo). */
+  coachApi: CoachService | null;
+  /** Este usuario es entrenador. */
+  coach: CoachInfo | null;
+  /** Entrenador del alumno y rutina que le asignó. */
+  coachLink: CoachLink | null;
+  assignedProgram: Program | null;
+  /** Vuelve a leer el entrenador y la rutina asignada. */
+  refreshCoach(): Promise<void>;
+  joinCoach(code: string): Promise<void>;
+  leaveCoach(): Promise<void>;
+  /** Acepta el aviso de salud de la rutina asignada. */
+  acceptHealthNotice(programId: string): Promise<void>;
 
   signIn(email: string, password: string): Promise<void>;
   signUp(email: string, password: string): Promise<void>;
@@ -89,6 +105,10 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
   const [editingProfile, setEditingProfile] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
   const [sync, setSync] = useState<SyncState | null>(null);
+  const coachRef = useRef<CoachService | null>(null);
+  const [coach, setCoach] = useState<CoachInfo | null>(null);
+  const [coachLink, setCoachLink] = useState<CoachLink | null>(null);
+  const [assignedProgram, setAssignedProgram] = useState<Program | null>(null);
   const unsubSync = useRef<(() => void) | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -110,6 +130,14 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
     return storeRef.current;
   };
 
+  const loadCoach = useCallback(async (svc: CoachService | null) => {
+    if (!svc) { setCoach(null); setCoachLink(null); setAssignedProgram(null); return; }
+    const [info, st] = await Promise.all([svc.coachInfo(), svc.athleteState()]);
+    setCoach(info);
+    setCoachLink(st.link);
+    setAssignedProgram(st.program);
+  }, []);
+
   const releaseStore = useCallback(() => {
     unsubSync.current?.();
     unsubSync.current = null;
@@ -120,7 +148,9 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
 
   const loadUser = useCallback(async (b: Backend, u: AuthUser) => {
     const s = b.createStore(u);
-    const d = await s.loadAll();
+    const svc = b.createCoach ? b.createCoach(u) : null;
+    const [d] = await Promise.all([s.loadAll(), loadCoach(svc)]);
+    coachRef.current = svc;
     if (isSyncSource(s)) {
       const off1 = s.onSync(setSync);
       const off2 = s.onRejected(n => showToast(n === 1
@@ -136,7 +166,7 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
     setDayId('');
     setEditingProfile(false);
     setStatus('ready');
-  }, [showToast]);
+  }, [showToast, loadCoach]);
 
   // Arranque: crea el backend y recupera la sesión
   useEffect(() => {
@@ -159,8 +189,19 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
     return () => { alive = false; };
   }, [injected, loadUser]);
 
+  // Al volver a la app se comprueba si el entrenador asignó o cambió la rutina
+  useEffect(() => {
+    if (status !== 'ready' || !coachRef.current) return;
+    const onVis = () => { if (document.visibilityState === 'visible') void loadCoach(coachRef.current).catch(() => {}); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [status, loadCoach]);
+
   const profile = data.profile;
-  const program = getProgram(profile?.routine_id);
+  const customs = useMemo(() => (assignedProgram ? { [assignedProgram.id]: assignedProgram } : {}), [assignedProgram]);
+  const lookup = useCallback<ProgramLookup>(id => customs[id] || builtinLookup(id), [customs]);
+  // La rutina asignada por el entrenador manda sobre la elegida en el perfil
+  const program = assignedProgram || getProgram(profile?.routine_id);
   const dayId = program.days.some(d => d.id === dayIdState) ? dayIdState : defaultDayId(data, program);
 
   const setTab = useCallback((t: Tab) => {
@@ -179,7 +220,24 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
   const api: AppApi = {
     status, bootError, mode: backend?.auth.mode || 'demo', user, data, profile, program,
     tab, setTab, dayId, setDayId, editingProfile, setEditingProfile, toast, showToast, sync,
-    prefs: prefsOf(profile),
+    prefs: prefsOf(profile), lookup, coachApi: coachRef.current, coach, coachLink, assignedProgram,
+
+    async refreshCoach() { await loadCoach(coachRef.current); },
+    async joinCoach(code) {
+      if (!coachRef.current) throw new Error('Unirse a un entrenador necesita una cuenta en la nube (no está disponible en modo demo).');
+      await coachRef.current.joinWithCode(code);
+      await loadCoach(coachRef.current);
+      setDayId('');
+    },
+    async leaveCoach() {
+      if (!coachRef.current) return;
+      await coachRef.current.leaveCoach();
+      await loadCoach(coachRef.current);
+      setDayId('');
+    },
+    async acceptHealthNotice(programId) {
+      await api.updateSettings({ acks: { ...(prefsOf(profile).acks || {}), [programId]: new Date().toISOString() } });
+    },
 
     async signIn(email, password) {
       const u = await backend!.auth.signIn(email, password);
@@ -193,6 +251,8 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
       const pending = sync?.pending || 0;
       await backend!.auth.signOut();
       releaseStore();
+      coachRef.current = null;
+      setCoach(null); setCoachLink(null); setAssignedProgram(null);
       if (pending) showToast(`Quedan ${pending} ${pending === 1 ? 'cambio' : 'cambios'} por enviar: se enviarán cuando vuelvas a entrar con conexión.`);
       setUser(null);
       dispatch({ type: 'clear' });

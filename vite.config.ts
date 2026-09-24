@@ -39,7 +39,13 @@ export default defineConfig(({ mode }) => {
               cleanupOutdatedCaches: true,
               // Nunca se cachean respuestas de Supabase (auth ni datos): siempre van a la red.
               runtimeCaching: [
-                { urlPattern: ({ url }) => url.hostname.endsWith('.supabase.co') || url.pathname.startsWith('/auth/'), handler: 'NetworkOnly' }
+                { urlPattern: ({ url }) => url.hostname.endsWith('.supabase.co') || url.pathname.startsWith('/auth/'), handler: 'NetworkOnly' },
+                // GIF de los ejercicios de ExerciseDB: se guardan para verlos sin conexión
+                {
+                  urlPattern: ({ url }) => url.hostname === 'static.exercisedb.dev',
+                  handler: 'CacheFirst',
+                  options: { cacheName: 'exercise-gifs', expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 90 }, cacheableResponse: { statuses: [0, 200] } }
+                }
               ]
             }
           })

@@ -7,8 +7,8 @@ import { useApp } from '../state/AppContext';
 import { Icon } from './Icon';
 
 export function WorkoutSummaryCard({ workout, onHistory }: { workout: Workout; onHistory?(): void }) {
-  const { data } = useApp();
-  const s = workoutSummary(data, workout);
+  const { data, lookup } = useApp();
+  const s = workoutSummary(data, workout, lookup);
   const diff = s.previous && s.previous.volume > 0 && s.volume > 0 ? Math.round(((s.volume - s.previous.volume) / s.previous.volume) * 100) : null;
   return (
     <section className="card summary" aria-labelledby="sum-t">

@@ -1,8 +1,9 @@
 /* Ilustración del ejercicio: figura SVG de poses en un cuadrado con el tinte del día.
    Tamaños del HANDOFF: lg 88 px / r18 (tarjeta activa), sm 52 px / r12 (filas),
    md 48 px (tarjeta de progreso), xs 36 px / r8 (listas).
-   `imageSrc` queda preparado para un archivo de imagen propio por ejercicio;
-   hoy no hay ninguna fuente de imágenes y siempre se usa la figura. */
+   `imageSrc`: GIF del ejercicio (ExerciseDB, en las rutinas propias). Va sobre fondo blanco
+   con el borde del día (HANDOFF). Con movimiento reducido o si no carga, se usa la figura. */
+import { useState } from 'react';
 import { getPose } from '../domain/poses';
 
 type Size = 'lg' | 'sm' | 'md' | 'xs';
@@ -33,12 +34,16 @@ export function PoseSvg({ pose }: { pose: string }) {
   );
 }
 
+const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
 export function ExerciseIllustration({ pose, size = 'lg', imageSrc, plain }: Props) {
-  const cls = ['ill', size === 'lg' ? '' : size, imageSrc ? 'gif' : '', plain ? 'plain' : ''].filter(Boolean).join(' ');
+  const [failed, setFailed] = useState(false);
+  const gif = imageSrc && !failed && !reducedMotion() ? imageSrc : undefined;
+  const cls = ['ill', size === 'lg' ? '' : size, gif ? 'gif' : '', plain ? 'plain' : ''].filter(Boolean).join(' ');
   return (
     <span className={cls}>
-      {imageSrc
-        ? <img src={imageSrc} alt="" loading={size === 'lg' ? 'eager' : 'lazy'} decoding="async" />
+      {gif
+        ? <img src={gif} alt="" loading={size === 'lg' ? 'eager' : 'lazy'} decoding="async" onError={() => setFailed(true)} />
         : <PoseSvg pose={pose} />}
     </span>
   );

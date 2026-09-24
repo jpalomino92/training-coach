@@ -24,7 +24,7 @@ export function ExerciseRow({ ex, number, sets, feel, onOpen }: Props) {
   return (
     <button type="button" className={`xrow${done ? ' done' : sets.length ? ' part' : ''}`} onClick={onOpen} aria-label={`${number}. ${ex.name}. ${sub.replace('✓', 'Hecho:').replace('◐', 'Empezado:')}`}>
       {!done && <span className="n" aria-hidden="true">{number}</span>}
-      <ExerciseIllustration pose={ex.pose} size="sm" />
+      <ExerciseIllustration pose={ex.pose} size="sm" imageSrc={ex.gifUrl} />
       <span className="tx" aria-hidden="true">
         <span className="t">{ex.name}</span>
         <span className="s">{sub}</span>

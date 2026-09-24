@@ -2,8 +2,8 @@
    comparación con la sesión anterior del mismo día de la rutina. */
 import { resolveExercise } from './alternatives';
 import { recordSetIds } from './records';
-import { routinePrograms } from './routines';
-import type { UserData, Workout } from './types';
+import { builtinLookup } from './routines';
+import type { ProgramLookup, UserData, Workout } from './types';
 import { totalSets } from './workout';
 
 export interface WorkoutSummary {
@@ -20,8 +20,8 @@ export interface WorkoutSummary {
 
 const when = (w: Workout) => +new Date(w.completed_at || w.started_at);
 
-export function workoutSummary(data: UserData, w: Workout): WorkoutSummary {
-  const program = routinePrograms[w.program_id];
+export function workoutSummary(data: UserData, w: Workout, lookup: ProgramLookup = builtinLookup): WorkoutSummary {
+  const program = lookup(w.program_id);
   const day = program?.days.find(d => d.id === w.day_id);
   const sets = data.sets.filter(s => s.workout_id === w.id);
   const volumeOf = (list: typeof sets) => list.reduce((n, s) => {

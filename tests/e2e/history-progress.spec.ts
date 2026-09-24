@@ -19,7 +19,7 @@ test('historial: detalle por ejercicio y borrado con confirmación dentro de la 
   await finishWithSets(page, '80');
 
   await tab(page, 'Historial');
-  await expect(page.getByText('Septiembre 2026')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Septiembre 2026', exact: true })).toBeVisible();
   const row = page.getByRole('button', { name: /Lun 21\/09 · Pierna A — Cuádriceps/ });
   await expect(row).toContainText('◐ Terminado con 4 de 23 series');
   await row.click();

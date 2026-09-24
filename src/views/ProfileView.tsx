@@ -14,6 +14,8 @@ import { BAR_OPTIONS } from '../domain/plates';
 import { useApp } from '../state/AppContext';
 import { ImportSheet } from './ImportSheet';
 import { ChangePasswordSheet } from './PasswordSheets';
+import { CoachSection } from './CoachSection';
+import { CoachPanel } from './coach/CoachPanel';
 
 const wakeLockSupported = () => typeof navigator !== 'undefined' && 'wakeLock' in navigator;
 
@@ -50,12 +52,14 @@ const THEMES: { value: ThemePref; label: string }[] = [
 ];
 
 export function ProfileView() {
-  const { profile, user, data, program, updatePrefs, setEditingProfile, signOut, showToast, mode } = useApp();
+  const { profile, user, data, program, updatePrefs, setEditingProfile, signOut, showToast, mode, lookup, assignedProgram, coachLink } = useApp();
+  const [panel, setPanel] = useState(false);
   const { draft, save } = useSettings();
   const [exportText, setExportText] = useState<string | null>(null);
   const [sheet, setSheet] = useState<'import' | 'password' | null>(null);
   const [busy, setBusy] = useState(false);
   if (!profile || !user) return null;
+  if (panel) return <CoachPanel onClose={() => setPanel(false)} />;
   const completed = data.workouts.filter(w => w.status === 'completed').length;
 
   const pref = async (patch: Parameters<typeof updatePrefs>[0]) => {
@@ -82,9 +86,10 @@ export function ProfileView() {
     ['Sexo', profile.sex || '—'],
     ['Objetivo', profile.goal || '—'],
     ['Nivel', profile.level || '—'],
-    ['Rutina', `${program.shortName} · ${program.daysPerWeek} días`]
+    ['Rutina', `${program.shortName} · ${program.daysPerWeek} días${assignedProgram ? ` · asignada por ${coachLink?.coachName || assignedProgram.coachName || 'tu entrenador'}` : ''}`]
   ];
-  if (program.safety.requiresHealthNotice && profile.health_notice_ack_at) rows.push(['Aviso de salud', `Aceptado el ${fmtDate(profile.health_notice_ack_at)}`]);
+  const ackAt = assignedProgram ? draft.acks?.[assignedProgram.id] : profile.health_notice_ack_at;
+  if (program.safety.requiresHealthNotice && ackAt) rows.push(['Aviso de salud', `Aceptado el ${fmtDate(ackAt)}`]);
 
   return (
     <main className="screen">
@@ -105,6 +110,8 @@ export function ProfileView() {
         <h2 className="eyebrow" id="p-datos">Tus datos</h2>
         <dl className="dl">{rows.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
       </section>
+
+      <CoachSection onOpenPanel={() => setPanel(true)} />
 
       <section className="card card-pad" aria-labelledby="p-apariencia">
         <h2 className="eyebrow" id="p-apariencia">Apariencia</h2>
@@ -157,7 +164,7 @@ export function ProfileView() {
         <Button variant="secondary" block icon="upload" onClick={() => setSheet('import')}>Importar CSV</Button>
         <div className="btn-row">
           <Button variant="secondary" small icon="download" onClick={() => downloadText(`peso-corporal-${localDate()}.csv`, exportBodyWeightsCsv(data))}>Peso (CSV)</Button>
-          <Button variant="secondary" small icon="download" onClick={() => downloadText(`historial-${localDate()}.csv`, exportSetsCsv(data))}>Series (CSV)</Button>
+          <Button variant="secondary" small icon="download" onClick={() => downloadText(`historial-${localDate()}.csv`, exportSetsCsv(data, lookup))}>Series (CSV)</Button>
         </div>
         <p className="hint">Importa tu historial de pesos (del peso corporal o de los ejercicios) desde otra app o una hoja de cálculo.</p>
       </section>

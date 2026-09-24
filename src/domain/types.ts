@@ -22,6 +22,11 @@ export interface Exercise {
   compound: boolean;
   /** Incremento de peso para − / + y para el texto de la sugerencia (kg). */
   weightStep: number;
+  /** Ejercicios de ExerciseDB (rutinas propias del entrenador). */
+  exercisedbId?: string;
+  gifUrl?: string;
+  /** Instrucciones originales de ExerciseDB (en inglés). */
+  instructions?: string[];
 }
 
 export interface WorkoutDay {
@@ -62,7 +67,13 @@ export interface Program {
   cardio: string;
   tips: string[];
   days: WorkoutDay[];
+  /** Rutina creada por un entrenador (custom_programs). */
+  custom?: boolean;
+  coachName?: string;
 }
+
+/** Busca una rutina (incluida o propia) por su id. */
+export type ProgramLookup = (id: string) => Program | undefined;
 
 /* ---------- Preferencias del usuario (profiles.prefs, jsonb) ---------- */
 
@@ -79,6 +90,8 @@ export interface Prefs {
   keep_awake: boolean;
   /** Peso de la barra para la calculadora de discos (kg). */
   bar_kg: number;
+  /** Fecha en que se aceptó el aviso de salud de cada rutina asignada: { programId: iso } */
+  acks?: Record<string, string>;
 }
 
 /* ---------- Registros (todos llevan user_id) ---------- */

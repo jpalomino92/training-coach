@@ -39,7 +39,8 @@ export function RoutineView() {
         <span className="eyebrow">Tu rutina</span>
         <h1 className="h1">{program.shortName}</h1>
         <p className="lead">{program.description}</p>
-        <p className="sm muted">{program.name} · {program.daysPerWeek} días por semana · {program.level}</p>
+        <p className="sm muted">{[program.name, `${program.daysPerWeek} días por semana`, program.level].filter(Boolean).join(' · ')}</p>
+        {program.custom && program.coachName && <p className="sm"><Icon name="users" className="inline-ic" /> Asignada por {program.coachName}</p>}
       </div>
 
       {program.safety.requiresHealthNotice && <HealthNoticeFull safety={program.safety} />}
@@ -78,7 +79,7 @@ export function RoutineView() {
             <ul className="exl" id={`day-${d.id}`}>
               {d.exercises.map(ex => (
                 <li key={ex.key}>
-                  <ExerciseIllustration pose={ex.pose} size="xs" />
+                  <ExerciseIllustration pose={ex.pose} size="xs" imageSrc={ex.gifUrl} />
                   <span>{ex.name}<br /><span className="xs muted">RIR {ex.rir} · descanso {restText(ex.rest)}</span></span>
                   <span className="tgt">{targetText(ex)}</span>
                 </li>
@@ -91,7 +92,7 @@ export function RoutineView() {
 
       <h2 className="sec eyebrow">Cómo entrenar</h2>
       <Info icon="progreso" title="Intensidad y progresión">
-        <p>{program.intensity}</p>
+        {program.intensity && <p>{program.intensity}</p>}
         <p>Doble progresión: cuando completes el máximo del rango en todas las series con al menos RIR {program.progression.minRirToProgress}, la app te sugerirá subir {program.progression.step}. El peso nunca cambia solo: tú decides.</p>
         <p className="sm muted">RIR son las repeticiones que te quedan en reserva al terminar la serie. RIR 2 significa que podrías haber hecho 2 más con buena técnica.</p>
       </Info>
@@ -102,11 +103,11 @@ export function RoutineView() {
         </div>
         <p>{PAIN_GUIDE.action}</p>
       </Info>
-      <Info icon="clock" title="Cardio"><p>{program.cardio}</p></Info>
+      {program.cardio && <Info icon="clock" title="Cardio"><p>{program.cardio}</p></Info>}
       {!program.safety.requiresHealthNotice && program.safety.warnings.length > 0 && (
         <Info icon="info" title="Precauciones"><ul>{program.safety.warnings.map(w => <li key={w}>{w}</li>)}</ul></Info>
       )}
-      <Info icon="rutina" title="Consejos"><ul>{program.tips.map(t => <li key={t}>{t}</li>)}</ul></Info>
+      {program.tips.length > 0 && <Info icon="rutina" title="Consejos"><ul>{program.tips.map(t => <li key={t}>{t}</li>)}</ul></Info>}
     </main>
   );
 }

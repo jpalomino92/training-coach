@@ -32,7 +32,7 @@ function Seg({ label, options, value, onChange, cols }: { label: string; options
 }
 
 export function OnboardingView() {
-  const { profile, saveProfile, setEditingProfile, signOut, showToast } = useApp();
+  const { profile, saveProfile, setEditingProfile, signOut, showToast, assignedProgram } = useApp();
   const editing = !!profile;
   const [step, setStep] = useState<1 | 2>(1);
   const [name, setName] = useState(profile?.name || '');
@@ -136,6 +136,9 @@ export function OnboardingView() {
       </div>
       <h1 className="h1" tabIndex={-1} ref={titleRef}>Elige tu rutina</h1>
       {editing && <p className="muted">Si cambias de rutina, tu historial anterior se conserva.</p>}
+      {assignedProgram && (
+        <div className="note"><Icon name="info" /><p>Ahora entrenas con <b>{assignedProgram.shortName}</b>, la rutina que te asignó tu entrenador. La que elijas aquí se usará si deja de asignártela.</p></div>
+      )}
       <form onSubmit={finish} noValidate aria-label="Elige tu rutina">
         <div className="stack-sm" role="group" aria-label="Rutinas">
           <span className="eyebrow">Rutinas</span>

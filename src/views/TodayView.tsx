@@ -8,11 +8,11 @@ import { DayDisc, DiscBadge } from '../components/DayDisc';
 import { ExerciseCard } from '../components/ExerciseCard';
 import { ExerciseRow } from '../components/ExerciseRow';
 import { HalfIcon } from '../components/Icon';
-import { HealthNoticeCompact } from '../components/HealthNotice';
+import { HealthNoticeCompact, HealthNoticeFull } from '../components/HealthNotice';
 import { WorkoutNote, WorkoutSummaryCard } from '../components/WorkoutSummary';
 import { fmtDate, fmtToday } from '../domain/format';
 import { restFor } from '../domain/prefs';
-import type { Exercise, Feel } from '../domain/types';
+import type { Exercise, Feel, Program } from '../domain/types';
 import { streak, weeklyCounts, weeklyGoal } from '../domain/consistency';
 import { altExercise, altKey, baseKey } from '../domain/alternatives';
 import { activeWorkout, dayStatus, isExerciseDone, lastSessionFor, programWorkouts, totalSets, usesAlternative } from '../domain/workout';
@@ -21,6 +21,33 @@ import { useTimer, vibrate } from '../state/TimerContext';
 
 const reduceMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const scrollToEl = (el: Element | null, block: ScrollLogicalPosition = 'start') => el?.scrollIntoView?.({ behavior: reduceMotion() ? 'auto' : 'smooth', block });
+
+/** Rutina asignada por el entrenador con aviso de salud: hay que aceptarlo antes de entrenar. */
+function AssignedNoticeGate({ program, name }: { program: Program; name: string }) {
+  const { acceptHealthNotice, showToast } = useApp();
+  const [ack, setAck] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const accept = async () => {
+    setBusy(true);
+    try { await acceptHealthNotice(program.id); } catch (e) { setBusy(false); showToast(e instanceof Error ? e.message : 'No se pudo guardar.'); }
+  };
+  return (
+    <main className="screen">
+      <div className="stack-sm">
+        <span className="eyebrow">Rutina nueva</span>
+        <h1 className="h1">Hola, {name}</h1>
+        <p className="lead">{program.coachName ? `${program.coachName} te ha asignado` : 'Tu entrenador te ha asignado'} <b>{program.shortName}</b>. Antes de empezar, lee el aviso.</p>
+      </div>
+      <HealthNoticeFull safety={program.safety}>
+        <label className="check">
+          <input type="checkbox" checked={ack} onChange={e => setAck(e.target.checked)} />
+          <span>{program.safety.ackText}</span>
+        </label>
+      </HealthNoticeFull>
+      <Button variant="primary" block onClick={accept} loading={busy} disabledReason={ack ? null : 'Marca la casilla del aviso para continuar'} showReason>Empezar</Button>
+    </main>
+  );
+}
 
 export function TodayView() {
   const app = useApp();
@@ -148,6 +175,10 @@ export function TodayView() {
       />
     );
   };
+
+  if (program.custom && program.safety.requiresHealthNotice && !prefs.acks?.[program.id]) {
+    return <AssignedNoticeGate program={program} name={profile?.name || ''} />;
+  }
 
   const remaining = total - doneCount;
   return (

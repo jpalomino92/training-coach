@@ -51,8 +51,11 @@ export const TechniquePanel = forwardRef<TechniquePanelHandle, Props>(function T
       <div id={bodyId} className="acc-body" hidden={!open}>
         <dl>
           {ex.cue && <div><dt className="eyebrow">Técnica</dt><dd>{ex.cue}</dd></div>}
-          <div><dt className="eyebrow" id={altId}>{isAlternative ? 'Ejercicio de la rutina' : 'Alternativa'}</dt><dd ref={altRef} tabIndex={-1} aria-labelledby={altId}>{ex.alt}</dd></div>
-          <div><dt className="eyebrow">Músculo principal</dt><dd>{ex.muscle}</dd></div>
+          {ex.alt && <div><dt className="eyebrow" id={altId}>{isAlternative ? 'Ejercicio de la rutina' : 'Alternativa'}</dt><dd ref={altRef} tabIndex={-1} aria-labelledby={altId}>{ex.alt}</dd></div>}
+          {ex.muscle && <div><dt className="eyebrow">Músculo principal</dt><dd>{ex.muscle}</dd></div>}
+          {!!ex.instructions?.length && (
+            <div><dt className="eyebrow">Paso a paso <span lang="es">(en inglés)</span></dt><dd><ol className="steps-en" lang="en">{ex.instructions.map((s, i) => <li key={i}>{s}</li>)}</ol></dd></div>
+          )}
         </dl>
         {ex.warn && (
           <div className="caution">

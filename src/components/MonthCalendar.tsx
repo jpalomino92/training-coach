@@ -2,15 +2,14 @@
    Tocar un día abre su entrenamiento en la lista. */
 import { useState } from 'react';
 import { localDate } from '../domain/format';
-import { routinePrograms } from '../domain/routines';
-import type { Workout } from '../domain/types';
+import type { ProgramLookup, Workout } from '../domain/types';
 import { Icon } from './Icon';
 
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const WEEKDAYS = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
 const HEAD = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
-export function MonthCalendar({ workouts, onPick }: { workouts: Workout[]; onPick(id: string): void }) {
+export function MonthCalendar({ workouts, lookup, onPick }: { workouts: Workout[]; lookup: ProgramLookup; onPick(id: string): void }) {
   const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const byDate = new Map<string, Workout[]>();
   for (const w of workouts) {
@@ -50,9 +49,9 @@ export function MonthCalendar({ workouts, onPick }: { workouts: Workout[]; onPic
                 const key = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const list = byDate.get(key) || [];
                 const w = list[0];
-                const day = w ? routinePrograms[w.program_id]?.days.find(x => x.id === w.day_id) : undefined;
+                const day = w ? lookup(w.program_id)?.days.find(x => x.id === w.day_id) : undefined;
                 const label = `${WEEKDAYS[c]} ${d} de ${MONTHS[m]}${list.length ? `: ${list.map(x => {
-                  const dd = routinePrograms[x.program_id]?.days.find(z => z.id === x.day_id);
+                  const dd = lookup(x.program_id)?.days.find(z => z.id === x.day_id);
                   return `${dd ? dd.name : x.day_id}${x.status === 'completed' ? '' : ' (en progreso)'}`;
                 }).join(', ')}` : ''}`;
                 return (

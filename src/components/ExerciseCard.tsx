@@ -100,7 +100,7 @@ export function ExerciseCard(p: ExerciseCardProps) {
   return (
     <article className={`xcard${complete ? ' complete' : ''}`} id={`ex-${p.anchor}`} aria-labelledby={`${feelId}-t`}>
       <div className="xhead">
-        <ExerciseIllustration pose={ex.pose} size="lg" />
+        <ExerciseIllustration pose={ex.pose} size="lg" imageSrc={ex.gifUrl} />
         <div className="tx">
           {complete
             ? <span className="done-head"><Icon name="check" />Ejercicio completado</span>

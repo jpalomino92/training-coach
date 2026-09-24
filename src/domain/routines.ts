@@ -253,9 +253,12 @@ export const routinePrograms: Record<string, Program> = {
 /* ---------- Índices útiles ---------- */
 export const programList = (): Program[] => Object.values(routinePrograms);
 
-export function getProgram(id: string | null | undefined): Program {
-  return (id && routinePrograms[id]) || programList()[0];
+export function getProgram(id: string | null | undefined, extra?: Record<string, Program>): Program {
+  return (id && (extra?.[id] || routinePrograms[id])) || programList()[0];
 }
+
+/** Búsqueda por defecto: solo las rutinas incluidas. */
+export const builtinLookup = (id: string): Program | undefined => routinePrograms[id];
 
 export function findExercise(program: Program, key: string): Exercise | null {
   for (const d of program.days) for (const e of d.exercises) if (e.key === key) return e;
