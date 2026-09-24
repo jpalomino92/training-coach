@@ -1,0 +1,38 @@
+/* Copiado de design/components.css: mismos nombres de clase y medidas. */
+/* ===== Peso corporal (design/components.css) ===== */
+.view{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:4px;border-radius:14px;background:var(--surface-3)}
+.view button{height:44px;border:0;border-radius:10px;background:transparent;color:var(--ink);font:600 17px/1 var(--font-display);letter-spacing:.03em;cursor:pointer}
+.view button[aria-pressed="true"]{background:var(--surface);box-shadow:var(--sh-1)}
+.wt-hero{padding:18px 16px;display:flex;flex-direction:column;gap:14px}
+.wt-hero .big{font:700 56px/1 var(--font-display);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.wt-hero .big small{font-size:28px;margin-left:4px}
+.delta{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--r-pill);background:var(--surface-2);font:600 15px/1 var(--font-body);font-variant-numeric:tabular-nums}
+.chart{padding:16px 16px 12px;display:flex;flex-direction:column;gap:12px}
+.chart svg text{font:500 12px var(--font-body);fill:var(--muted)}
+.tip{position:absolute;padding:6px 10px;border-radius:8px;background:var(--ink);color:var(--surface);font:600 14px/1.2 var(--font-body);white-space:nowrap;transform:translate(-50%,-100%)}
+.wlist{margin:0;padding:0;list-style:none}
+.wlist li{display:flex;align-items:center;gap:12px;min-height:56px;padding:4px 0;border-top:1px solid var(--line)}
+.wlist li .d{flex-grow:1;font-size:16px}
+.wlist li b{font:700 22px/1 var(--font-display);font-variant-numeric:tabular-nums}
+.sheet{position:fixed;z-index:30;left:0;right:0;bottom:0;background:var(--surface);border-radius:24px 24px 0 0;box-shadow:var(--sh-3);padding:10px 20px calc(20px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:18px}
+.sheet .grab{align-self:center;width:40px;height:5px;border-radius:3px;background:var(--line-strong)}
+.scrim{position:fixed;z-index:29;inset:0;background:rgba(17,20,25,.45)}
+
+/* ===== Añadidos de la versión React ===== */
+.view button:hover:not([aria-pressed="true"]){background:color-mix(in srgb,var(--surface) 50%,transparent)}
+.wt-hero .row{flex-wrap:wrap;gap:12px}
+.chart .hd{display:flex;justify-content:space-between;align-items:baseline}
+.chart .plot{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible;touch-action:pan-y}
+.chart .tip{pointer-events:none}
+.wlist li .v{display:flex;align-items:center;gap:12px}
+.wlist li .n{display:block;font-size:14px;color:var(--muted)}
+.sheet{max-width:640px;margin:0 auto;max-height:92vh;overflow:auto;animation:sheet-in .2s ease-out}
+.sheet .hd{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.sheet .stepper.big{grid-template-columns:72px minmax(0,1fr) 72px}
+.sheet .stepper.big .num-in,.sheet .stepper.big .step{height:72px}
+.sheet .stepper.big .num-in{font-size:40px}
+@keyframes sheet-in{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+.scrim{animation:fade-in .2s ease-out}
+@keyframes fade-in{from{opacity:0}to{opacity:1}}
+.delta{white-space:nowrap}.delta svg{width:16px;height:16px;flex-shrink:0}

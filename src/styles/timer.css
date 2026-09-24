@@ -1,0 +1,24 @@
+/* Copiado de design/components.css: mismos nombres de clase y medidas. */
+/* ===== Temporizador (design/components.css) ===== */
+.timer{position:fixed;left:max(12px,calc(50% - 348px));right:max(12px,calc(50% - 348px));bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px);z-index:20;border-radius:var(--r-xl);background:var(--timer-bg);color:var(--timer-ink);box-shadow:var(--sh-3);overflow:hidden}
+.timer .in{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 16px}
+.timer .tx{flex-grow:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.timer .eyebrow{color:rgba(255,255,255,.72)}
+.timer .t{font:700 var(--fs-hero)/1 var(--font-display);font-variant-numeric:tabular-nums}
+.timer .tb{height:var(--tap);min-width:var(--tap);padding:0 14px;border-radius:var(--r-md);border:0;font:600 18px/1 var(--font-display);cursor:pointer}
+.timer .tb.ghost{background:rgba(255,255,255,.12);color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35)}
+.timer .tb.solid{background:#fff;color:#1C2230}
+.timer .prog{height:6px;background:rgba(255,255,255,.14)}
+.timer .prog>i{display:block;height:100%;background:var(--day)}
+.timer.fin{background:#2A7A45}
+
+/* ===== Añadidos de la versión React ===== */
+.timer{color-scheme:dark}
+.timer .body{flex-grow:1;display:flex;flex-direction:column;gap:2px;min-width:0;background:none;border:0;padding:0;color:inherit;text-align:left;cursor:pointer}
+.timer .body:disabled{cursor:default}
+.timer .tb.ghost:hover{background:rgba(255,255,255,.2)}
+.timer.fin .t{font-size:24px;line-height:1.15}
+.timer.fin .sub{font-size:16px}
+.timer .tx .eyebrow,.timer .body .eyebrow{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-theme="dark"] .timer.fin{background:#2A7A45}
+.timer .tb{white-space:nowrap;flex-shrink:0}

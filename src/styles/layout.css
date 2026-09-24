@@ -1,0 +1,17 @@
+/* Copiado de design/components.css: mismos nombres de clase y medidas. */
+/* ===== Layout y breakpoints (design/components.css) ===== */
+.page{max-width:var(--content-max);margin:0 auto;padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 96px)}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:10}
+@media (min-width:900px){
+  .tabbar{position:sticky;top:0;bottom:auto;border-top:0;border-bottom:1px solid var(--line);padding-bottom:0}
+  .tabbar .items{display:flex;justify-content:center;gap:8px;height:72px}
+  .tab{flex-direction:row;gap:8px;font-size:16px;padding:0 6px}
+  .page{padding-bottom:96px}
+  .timer{left:auto;right:32px;bottom:32px;width:380px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* ===== Añadidos de la versión React ===== */
+.page{min-height:100vh;min-height:100dvh}
+.page.with-compact{padding-top:0}
+@media (min-width:900px){.tabbar .items{align-items:center}}

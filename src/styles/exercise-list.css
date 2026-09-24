@@ -1,0 +1,37 @@
+/* Copiado de design/components.css: mismos nombres de clase y medidas. */
+/* ===== Lista de ejercicios (design/components.css) ===== */
+.list{padding:0 16px;display:flex;flex-direction:column;gap:10px}
+.sec{margin:10px 0 0}
+.ill{flex-shrink:0;width:72px;height:72px;border-radius:16px;background:var(--day-tint-2);color:var(--day-text);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ill svg{width:62%;height:62%}
+.ill.sm{width:52px;height:52px;border-radius:12px}
+.xhead .ill{width:88px;height:88px;border-radius:18px}
+.ill.gif{background:#fff;box-shadow:inset 0 0 0 2px var(--day-tint-2)}
+.ill img{width:100%;height:100%;object-fit:contain;display:block}
+.xrow{display:flex;align-items:center;gap:12px;width:100%;min-height:72px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);color:var(--ink);font-family:var(--font-body);text-align:left;cursor:pointer;box-shadow:var(--sh-1)}
+.xrow .tx{flex-grow:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.xrow .t{font-size:17px;font-weight:600;line-height:1.25}
+.xrow .s{font-size:15px;color:var(--muted)}
+.xrow.done{background:var(--surface-2);box-shadow:none}
+.xrow.done .s{color:var(--ok);font-weight:600}
+.xrow .n{width:22px;font:700 18px/1 var(--font-display);color:var(--muted)}
+.xrow .chev{width:20px;height:20px;color:var(--muted);flex-shrink:0}
+
+/* ===== Añadidos de la versión React ===== */
+.xrow:hover{background:var(--surface-2)}
+.xrow .ill svg{width:66%;height:66%}
+.xrow.part .s{color:var(--day-text);font-weight:600}
+.sec.eyebrow{display:block;margin-top:14px}
+.list>.sec:first-child{margin-top:0}
+.ill .pose{display:block}
+.ill .pose .prop{stroke:currentColor;opacity:.45}
+.ill .pose .box{fill:currentColor;opacity:.22}
+.ill .pose .wt{fill:currentColor}
+.ill .pose .wt-hole{fill:var(--day-tint-2)}
+.ill .pose .limb{stroke:currentColor}
+.ill .pose .head{fill:currentColor}
+.ill.plain{background:var(--surface-2);color:var(--muted)}
+.ill.plain .pose .wt-hole{fill:var(--surface-2)}
+.ill.xs{width:36px;height:36px;border-radius:8px}
+.ill.md{width:48px;height:48px;border-radius:12px}
+.ill svg.pose{width:86%;height:86%}

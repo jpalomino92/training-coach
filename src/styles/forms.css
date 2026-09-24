@@ -1,0 +1,73 @@
+/* Copiado de design/components.css: mismos nombres de clase y medidas. */
+/* ===== Formularios (design/components.css) ===== */
+.field{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;border:0;min-width:0}
+.field>label,.field>legend{font:600 15px/1.2 var(--font-body);color:var(--ink);padding:0}
+.inp{width:100%;height:var(--tap-lg);border:2px solid var(--line-strong);border-radius:var(--r-md);background:var(--surface);padding:0 14px;font:400 17px/1 var(--font-body);color:var(--ink)}
+.inp::placeholder{color:var(--muted)}
+.inp.is-focus{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 25%,transparent)}
+.inp[aria-invalid="true"]{border-color:var(--danger);background:var(--danger-tint)}
+.hint{font-size:14px;color:var(--muted)}
+.pw{position:relative}.pw .inp{padding-right:100px}.pw .btn-link{position:absolute;right:4px;top:4px;font-size:15px}
+.alert{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--r-md);background:var(--danger-tint);box-shadow:inset 0 0 0 1.5px var(--danger);font-size:15px;line-height:1.4}
+.alert svg{flex-shrink:0;width:20px;height:20px;color:var(--danger)}
+.note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--r-md);background:var(--surface);border:1px solid var(--line);font-size:15px;line-height:1.4}
+.note svg{flex-shrink:0;width:20px;height:20px;color:var(--muted)}
+.brand{display:flex;align-items:center;gap:0}
+.brand .p{width:30px;height:30px;border-radius:50%;margin-right:-8px;box-shadow:0 0 0 2px var(--bg),inset 0 0 0 3px rgba(0,0,0,.15)}
+.steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.steps i{display:block;height:6px;border-radius:3px;background:var(--surface-3)}.steps i.on{background:var(--accent)}
+.opt{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:10px 14px;border:1.5px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);font:600 17px/1.2 var(--font-body);text-align:left;cursor:pointer}
+.opt .rd{flex-shrink:0;width:24px;height:24px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--line-strong);display:flex;align-items:center;justify-content:center;color:#fff}
+.opt .rd svg{width:14px;height:14px}
+.opt[aria-pressed="true"]{border:2px solid var(--accent);background:color-mix(in srgb,var(--accent) 7%,var(--surface))}
+.opt[aria-pressed="true"] .rd{background:var(--accent);box-shadow:none;color:var(--accent-ink)}
+.rcard{display:flex;flex-direction:column;gap:12px;width:100%;padding:16px;border:1.5px solid var(--line);border-radius:var(--r-xl);background:var(--surface);color:var(--ink);font-family:var(--font-body);text-align:left;cursor:pointer;box-shadow:var(--sh-1)}
+.rcard[aria-pressed="true"]{border:2px solid var(--ink)}
+.rcard .top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.mini{display:flex;gap:6px}
+.mini .disc{width:32px;height:32px;font-size:13px;cursor:default;box-shadow:inset 0 0 0 2.5px rgba(0,0,0,.16),inset 0 0 0 4px rgba(255,255,255,.22)}
+.check{display:flex;gap:12px;align-items:flex-start;min-height:48px;padding:12px;border-radius:var(--r-md);background:var(--surface);box-shadow:inset 0 0 0 2px var(--ink);cursor:pointer}
+.check input{width:24px;height:24px;margin:0;flex-shrink:0;accent-color:var(--ink)}
+
+/* ===== Añadidos de la versión React ===== */
+.inp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 25%,transparent)}
+.inp:focus-visible{outline:none}
+.inp.narrow{max-width:160px}
+textarea.inp{height:auto;min-height:96px;padding:12px 14px;line-height:1.4;resize:vertical}
+input[type="date"].inp{appearance:none;-webkit-appearance:none;line-height:52px}
+.label-opt{font-weight:400;color:var(--muted)}
+.auth{max-width:480px;margin:0 auto;padding:calc(40px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom));min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;gap:20px}
+.auth.wide{max-width:620px}
+.auth form{display:flex;flex-direction:column;gap:18px}
+.auth .foot{margin-top:auto}
+.auth .switch-mode{text-align:center;font-size:17px}
+.auth .switch-mode .btn-link{padding:0 4px;display:inline-flex}
+.seg.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.seg.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.seg button:hover{background:var(--surface-2)}
+.seg button[aria-pressed="true"]:hover{background:var(--ink)}
+.opt-list{display:flex;flex-direction:column;gap:8px}
+.opt:hover{background:var(--surface-2)}
+.opt[aria-pressed="true"]:hover{background:color-mix(in srgb,var(--accent) 7%,var(--surface))}
+.rcard:hover{background:var(--surface-2)}
+.rcard .rd{flex-shrink:0;width:28px;height:28px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--line-strong);display:flex;align-items:center;justify-content:center;color:var(--surface)}
+.rcard .rd svg{width:16px;height:16px}
+.rcard[aria-pressed="true"] .rd{background:var(--ink);box-shadow:none}
+.mini .disc{color:#fff}
+.mini .disc.dc-yellow{color:#1C2230}
+[data-theme="dark"] .mini .disc{color:#0F1522}
+.notice-full{padding:16px;border-radius:var(--r-xl);background:var(--info-tint);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--info) 35%,transparent);display:flex;flex-direction:column;gap:12px;font-size:16px;line-height:1.5}
+.notice-full .hd{display:flex;align-items:center;gap:10px;font:700 22px/1.1 var(--font-display)}
+.notice-full .hd svg{width:22px;height:22px;color:var(--info);flex-shrink:0}
+.notice-full ul{padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.check{font-size:16px;font-weight:600;line-height:1.35}
+.check:focus-within{outline:3px solid var(--focus);outline-offset:3px}
+.check input:focus-visible{outline:none}
+.num-in:focus{outline:none;border-color:var(--day-text);box-shadow:0 0 0 4px color-mix(in srgb,var(--day) 28%,transparent)}
+.num-in:focus-visible{outline:none}
+.num-in:read-only{background:var(--surface-2)}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+.err:empty{display:none}
+.field>label.eyebrow{font:600 var(--fs-label)/1.2 var(--font-display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.field-label{font:600 15px/1.2 var(--font-body);color:var(--ink)}

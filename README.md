@@ -1,0 +1,73 @@
+# [Nombre de la app]
+
+App web (PWA) para seguir rutinas de fuerza: registro de series (peso, repeticiones y RIR), última sesión, sugerencias de doble progresión, temporizador de descanso, historial, progreso por ejercicio y peso corporal.
+
+React 18 + TypeScript + Vite. Backend en producción: Supabase (Auth + PostgreSQL con Row Level Security). Modo demo con almacenamiento local para desarrollo y pruebas.
+
+## Comandos
+
+```
+npm install
+npm run dev          # http://localhost:5173 (modo demo por defecto)
+npm run test         # Vitest: lógica y componentes
+npm run test:e2e     # Playwright en móvil (375 y 390 px)
+npm run screenshots  # capturas de todas las pantallas en screenshots/ (5 anchos × claro/oscuro)
+npm run build        # lint + tsc + build de producción en dist/
+npm run build:single # un único index.html en dist-single/ (solo modo demo)
+```
+
+## Configuración
+
+Copia `.env.example` a `.env`:
+
+- `VITE_APP_MODE=demo` → cuentas y datos en `localStorage` de este navegador.
+- `VITE_APP_MODE=supabase` → rellena `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` (la clave pública `anon`, nunca la `service_role`) y ejecuta `supabase/schema.sql` en el SQL Editor del proyecto.
+
+El nombre de la app es la constante `APP_NAME` de `src/config.ts`.
+
+## Estructura
+
+```
+src/config.ts            APP_NAME, modo y claves por variables de entorno
+src/domain/              routines (datos), poses (SVG), progression, workout (selectores), format, types
+src/services/auth/       DemoAuth (PBKDF2, nunca contraseñas en claro) y SupabaseAuth
+src/services/storage/    LocalStore y SupabaseStore con la misma interfaz; todo lleva user_id
+src/state/               AppContext (sesión, datos, navegación) y TimerContext
+src/components/          Componentes reutilizables (mismos nombres de clase que design/components.css)
+src/views/               Hoy, Rutina, Progreso (+ peso corporal), Historial, Perfil, acceso y perfil inicial
+src/styles/              tokens.css (copia literal de design/tokens.css) y CSS por componente
+supabase/schema.sql      Tablas + Row Level Security
+tests/unit, tests/e2e    Vitest + Testing Library, Playwright
+legacy/                  Prototipo original (fuera del build), solo como referencia
+```
+
+## Rutinas
+
+Los programas son solo datos (`src/domain/routines.ts`). Para añadir uno, copia una entrada de `routinePrograms`, cambia el `id` y los datos; la interfaz no se toca. Cada ejercicio tiene `weightStep` (2,5 kg por defecto; 1 kg con mancuernas y en la rutina de 56 años). Las rutinas con `safety.requiresHealthNotice` exigen aceptar el aviso de salud al elegirlas.
+
+`tests/unit/routines.test.ts` comprueba que el contenido de las rutinas coincide literalmente con el del prototipo.
+
+## Modo demo
+
+- La contraseña nunca se guarda: solo un hash PBKDF2-SHA256 con sal aleatoria.
+- Cada usuario tiene su propia clave (`fuerza:v1:data:<user_id>`) y cada registro lleva `user_id`.
+- Cerrar sesión solo borra la sesión, nunca los datos.
+- No es un sistema de seguridad real: cualquiera con acceso al dispositivo puede leer el almacenamiento del navegador.
+
+## Supabase
+
+1. Crea el proyecto y ejecuta `supabase/schema.sql` en SQL Editor.
+2. Authentication → Sign In / Providers → Email: con "Confirm email" activado, la app pide confirmar el correo antes de iniciar sesión.
+3. Authentication → URL Configuration: pon la URL pública de la app en **Site URL** (para los enlaces de confirmación).
+4. Pruebas contra el proyecto real (usan `.env.supabase.local`, que no se sube al repositorio):
+   - `npm run test:supabase` → Row Level Security: un usuario no puede leer, cambiar, borrar ni escribir datos de otro.
+   - `npm run test:e2e:supabase` → la app completa en el navegador conectada a Supabase.
+   - Necesitan `SUPABASE_TEST_EMAIL` (una dirección propia que admita alias con `+`) y "Confirm email" desactivado.
+
+## Publicar gratis
+
+**Vercel** (`vercel.json` incluido): importa el repositorio en vercel.com → framework Vite → añade en Settings → Environment Variables `VITE_APP_MODE=supabase`, `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` → Deploy.
+
+**Netlify** (`netlify.toml` incluido): Add new site → Import from Git → añade las mismas variables en Site configuration → Environment variables → Deploy.
+
+Las dos sirven HTTPS (necesario para instalar la PWA y para el cifrado del modo demo), redirigen todas las rutas a `index.html` y no cachean `sw.js`, para que las actualizaciones lleguen enseguida.

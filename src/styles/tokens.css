@@ -1,0 +1,47 @@
+/* Tokens de diseño · app de entrenamiento de fuerza
+   Uso: <html data-theme="light|dark" data-day="red|blue|yellow|green|black">
+   data-theme lo resuelve JS: "auto" = matchMedia("(prefers-color-scheme: dark)").
+   data-day cambia con el disco seleccionado; --accent toma --day. */
+/* ===== Tokens · modo claro (por defecto) ===== */
+:root,[data-theme="light"],[data-theme="dark"]{
+  --bg:#EDEFEB; --surface:#FFFFFF; --surface-2:#F4F5F2; --surface-3:#E4E7E1;
+  --ink:#1C2230; --muted:#5F6675; --line:#D5D9D2; --line-strong:#B2B8AE;
+  --red:#C8323C; --blue:#2456A6; --yellow:#D99E00; --green:#2F8A4E; --black:#2B2F38;
+  --ok:#2A7A45; --ok-tint:#E3F0E7; --warn:#8A5F00; --warn-tint:#FBEFD2;
+  --danger:#B42831; --danger-tint:#FBE5E6; --info:#2456A6; --info-tint:#E7ECF5;
+  --accent:#2456A6; --accent-ink:#FFFFFF;
+  --timer-bg:#1C2230; --timer-ink:#FFFFFF; --focus:#1C2230;
+  --sh-1:0 1px 2px rgba(28,34,48,.06),0 1px 4px rgba(28,34,48,.05);
+  --sh-2:0 6px 18px rgba(28,34,48,.09);
+  --sh-3:0 16px 40px rgba(28,34,48,.24);
+  --font-display:'Barlow Condensed',sans-serif; --font-body:'Barlow',sans-serif;
+  --fs-hero:44px; --fs-h1:34px; --fs-h2:28px; --fs-h3:24px; --fs-num:32px; --fs-stat:28px;
+  --fs-body:17px; --fs-sm:15px; --fs-xs:13px; --fs-label:13px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px; --sp-10:40px;
+  --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:20px; --r-pill:999px;
+  --tap:48px; --tap-lg:56px; --field:64px; --nav-h:64px; --content-max:720px;
+  }
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0;padding-top:env(safe-area-inset-top)}
+/* ===== Tokens · modo oscuro ===== */
+[data-theme="dark"]{
+  --bg:#111419; --surface:#1A1E25; --surface-2:#222731; --surface-3:#2C323D;
+  --ink:#EDEFEA; --muted:#A3A9B5; --line:#2F3540; --line-strong:#48505D;
+  --red:#E4575F; --blue:#6D99E8; --yellow:#E9B52A; --green:#4FB874; --black:#9AA1AF;
+  --ok:#5CC27F; --ok-tint:#1B3224; --warn:#E9B52A; --warn-tint:#372D12;
+  --danger:#FF6B72; --danger-tint:#3B1C1F; --info:#6D99E8; --info-tint:#1D2839;
+  --accent:#6D99E8; --accent-ink:#0F1522;
+  --timer-bg:#2C323D; --timer-ink:#FFFFFF; --focus:#EDEFEA;
+  --sh-1:0 1px 2px rgba(0,0,0,.45); --sh-2:0 6px 18px rgba(0,0,0,.45); --sh-3:0 16px 40px rgba(0,0,0,.65);
+}
+/* ===== Color del día (--day) ===== */
+[data-day="red"]{--day:var(--red);--day-text:#A8262F;--day-ink:#FFFFFF}
+[data-day="blue"]{--day:var(--blue);--day-text:#2456A6;--day-ink:#FFFFFF}
+[data-day="yellow"]{--day:var(--yellow);--day-text:#7E5700;--day-ink:#1C2230}
+[data-day="green"]{--day:var(--green);--day-text:#246E3E;--day-ink:#FFFFFF}
+[data-day="black"]{--day:var(--black);--day-text:#2B2F38;--day-ink:#FFFFFF}
+[data-theme="dark"][data-day="red"],[data-theme="dark"] [data-day="red"],[data-theme="dark"][data-day="blue"],[data-theme="dark"] [data-day="blue"],[data-theme="dark"][data-day="yellow"],[data-theme="dark"] [data-day="yellow"],[data-theme="dark"][data-day="green"],[data-theme="dark"] [data-day="green"],[data-theme="dark"][data-day="black"],[data-theme="dark"] [data-day="black"]{--day-text:var(--day);--day-ink:#0F1522}
+[data-day="red"],[data-day="blue"],[data-day="yellow"],[data-day="green"],[data-day="black"]{
+  --day-tint:color-mix(in srgb,var(--day) 11%,var(--surface));
+  --day-tint-2:color-mix(in srgb,var(--day) 20%,var(--surface));
+  --accent:var(--day); --accent-ink:var(--day-ink);
+}

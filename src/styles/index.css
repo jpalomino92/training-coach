@@ -1,0 +1,20 @@
+/* Orden: tokens del diseño → componentes (design/components.css) → layout */
+@import '@fontsource/barlow/400.css';
+@import '@fontsource/barlow/500.css';
+@import '@fontsource/barlow/600.css';
+@import '@fontsource/barlow/700.css';
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/barlow-condensed/700.css';
+@import './tokens.css';
+@import './base.css';
+@import './button.css';
+@import './forms.css';
+@import './today-header.css';
+@import './exercise-list.css';
+@import './exercise-card.css';
+@import './tabbar.css';
+@import './timer.css';
+@import './screens.css';
+@import './body-weight.css';
+@import './switch.css';
+@import './layout.css';

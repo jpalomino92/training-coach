@@ -1,0 +1,25 @@
+/* Copiado de design/components.css: mismos nombres de clase y medidas. */
+/* ===== Menú inferior (design/components.css) ===== */
+.tabbar{flex-shrink:0;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.tabbar .items{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));height:var(--nav-h)}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-decoration:none;color:var(--muted);font:600 13px/1 var(--font-display);letter-spacing:.04em}
+.tab .pill{width:54px;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center}
+.tab svg{width:22px;height:22px}
+.tab[aria-current="page"]{color:var(--ink)}
+.tab[aria-current="page"] .pill{background:var(--day-tint-2);color:var(--day-text)}
+
+/* ===== Añadidos de la versión React ===== */
+.tabbar .in{max-width:1100px;margin:0 auto;display:flex;align-items:center}
+.tabbar .items{flex-grow:1;margin:0;padding:0;list-style:none}
+.tabbar .brand{display:none}
+.tab{height:100%;width:100%;border:0;background:none;cursor:pointer;padding:0}
+.tab:hover .pill{background:var(--surface-2)}
+.tab[aria-current="page"]:hover .pill{background:var(--day-tint-2)}
+@media (min-width:900px){
+  .tabbar .in{padding:0 24px;gap:24px}
+  .tabbar .brand{display:flex;align-items:center;gap:14px;font:700 22px/1 var(--font-display);white-space:nowrap}
+  .tabbar .brand .plates{display:flex}
+  .tabbar .items{justify-content:flex-end}
+  .tab{width:auto;height:48px;padding:0 6px}
+  .tab .pill{width:44px;height:36px}
+}
