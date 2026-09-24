@@ -159,7 +159,4 @@ describe('contraseña (modo demo)', () => {
     await expect(auth.signIn('ana@correo.com', 'contraseña-vieja')).rejects.toThrow();
     expect((await auth.signIn('ana@correo.com', 'contraseña-nueva')).email).toBe('ana@correo.com');
   });
-  it('recuperar por email no es posible en modo demo y lo explica', async () => {
-    await expect(new DemoAuth(localStorage, 1000).requestPasswordReset()).rejects.toThrow('modo demo');
-  });
 });

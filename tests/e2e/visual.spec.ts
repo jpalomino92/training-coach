@@ -75,9 +75,6 @@ for (const [label, width, height] of WIDTHS) for (const theme of THEMES) {
     await page.getByLabel('Repite la contraseña').fill('1234');
     await page.getByRole('form', { name: 'Crear cuenta' }).getByRole('button', { name: 'Crear cuenta' }).click();
     await shot('crear-cuenta-errores');
-    await page.getByRole('button', { name: 'Iniciar sesión' }).first().click();
-    await page.getByRole('button', { name: '¿Olvidaste tu contraseña?' }).click();
-    await shot('recuperar-contrasena');
 
     // Carmen: rutina de 56 años, primera vez
     await signUp(page, 'carmen@correo.com');

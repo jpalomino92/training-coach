@@ -12,7 +12,6 @@ import { TimerProvider } from './state/TimerContext';
 import { AuthView } from './views/AuthView';
 import { HistoryView } from './views/HistoryView';
 import { OnboardingView } from './views/OnboardingView';
-import { NewPasswordView } from './views/PasswordSheets';
 import { ProfileView } from './views/ProfileView';
 import { ProgressView } from './views/ProgressView';
 import { RoutineView } from './views/RoutineView';
@@ -62,7 +61,6 @@ function Screens() {
     );
   }
   if (status === 'signedOut') return <AuthView />;
-  if (status === 'recovery') return <NewPasswordView />;
   if (!profile || editingProfile) return <OnboardingView />;
   return <Main />;
 }

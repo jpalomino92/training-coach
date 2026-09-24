@@ -11,53 +11,9 @@ import { useApp } from '../state/AppContext';
 
 type Errors = Partial<Record<'email' | 'password' | 'password2' | 'form', string>>;
 
-/** Recuperar contraseña: envía el enlace. En modo demo explica por qué no es posible. */
-function ForgotPassword({ initialEmail, onBack }: { initialEmail: string; onBack(): void }) {
-  const { requestPasswordReset, mode } = useApp();
-  const [email, setEmail] = useState(initialEmail);
-  const [error, setError] = useState<{ email?: string; form?: string }>({});
-  const [sent, setSent] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const emailRef = useRef<HTMLInputElement>(null);
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (busy) return;
-    const em = normEmail(email);
-    if (!isValidEmail(em)) { setError({ email: 'Escribe un email válido, por ejemplo nombre@correo.com' }); emailRef.current?.focus(); return; }
-    setBusy(true); setError({});
-    try { await requestPasswordReset(em); setSent(true); }
-    catch (err) { setError({ form: err instanceof Error ? err.message : 'No se pudo enviar el enlace.' }); }
-    finally { setBusy(false); }
-  };
-
-  return (
-    <main className="auth">
-      <button type="button" className="back" onClick={onBack}><Icon name="chevL" />Iniciar sesión</button>
-      <h1 className="h1">Recuperar contraseña</h1>
-      {mode === 'demo' ? (
-        <div className="note"><Icon name="info" /><p><b>Modo demo.</b> Las cuentas solo existen en este navegador y no se pueden enviar correos, así que no hay forma de recuperar la contraseña. Puedes crear una cuenta nueva.</p></div>
-      ) : sent ? (
-        <div className="note" role="status"><Icon name="check" /><p><b>Revisa tu correo.</b> Si hay una cuenta con {normEmail(email)}, te llegará un enlace para elegir una contraseña nueva. Puede tardar unos minutos; mira también en spam.</p></div>
-      ) : (
-        <>
-          <p className="muted lead">Escribe el email de tu cuenta y te enviaremos un enlace para elegir una contraseña nueva.</p>
-          <form onSubmit={submit} noValidate aria-label="Recuperar contraseña">
-            {error.form && <div className="alert" role="alert"><Icon name="alert" /><p>{error.form}</p></div>}
-            <TextField ref={emailRef} label="Email" type="email" inputMode="email" autoComplete="email" placeholder="nombre@correo.com"
-              value={email} onChange={e => setEmail(e.target.value)} error={error.email} />
-            <Button variant="primary" block type="submit" loading={busy}>Enviar enlace</Button>
-          </form>
-        </>
-      )}
-    </main>
-  );
-}
-
 export function AuthView() {
-  const { signIn, signUp, mode, authNotice } = useApp();
+  const { signIn, signUp, mode } = useApp();
   const [signup, setSignup] = useState(false);
-  const [forgot, setForgot] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
@@ -68,8 +24,6 @@ export function AuthView() {
   const pw2Ref = useRef<HTMLInputElement>(null);
 
   const switchMode = () => { setSignup(s => !s); setErrors({}); setPassword(''); setPassword2(''); };
-
-  if (forgot) return <ForgotPassword initialEmail={email} onBack={() => { setForgot(false); setErrors({}); }} />;
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -113,7 +67,6 @@ export function AuthView() {
       <h1 className="h1">{signup ? 'Crear cuenta' : 'Iniciar sesión'}</h1>
       {signup && <p className="muted lead">Tu rutina, tus pesos y tu historial quedan guardados en tu cuenta.</p>}
 
-      {authNotice && !signup && <div className="note" role="status"><Icon name="info" /><p>{authNotice}</p></div>}
       <form onSubmit={submit} noValidate aria-label={signup ? 'Crear cuenta' : 'Iniciar sesión'}>
         {errors.form && (
           <div className="alert" role="alert"><Icon name="alert" /><p>{errors.form}</p></div>
@@ -128,7 +81,6 @@ export function AuthView() {
             value={password2} onChange={e => setPassword2(e.target.value)} error={errors.password2} />
         )}
         <Button variant="primary" block type="submit" loading={busy}>{signup ? 'Crear cuenta' : 'Entrar'}</Button>
-        {!signup && <button type="button" className="btn btn-link" style={{ alignSelf: 'center' }} onClick={() => setForgot(true)}>¿Olvidaste tu contraseña?</button>}
       </form>
 
       <p className="switch-mode">

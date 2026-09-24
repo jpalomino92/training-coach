@@ -17,8 +17,7 @@ import { emptyData, isSyncSource, type Store, type SyncState } from '../services
 import { dataReducer } from './dataReducer';
 
 export type Tab = 'hoy' | 'rutina' | 'progreso' | 'historial' | 'perfil';
-/** recovery: se abrió desde el enlace del email para elegir una contraseña nueva. */
-export type Status = 'loading' | 'error' | 'signedOut' | 'recovery' | 'ready';
+export type Status = 'loading' | 'error' | 'signedOut' | 'ready';
 
 export interface SetValues { weight: number | null; reps: number; rir: number | null }
 
@@ -42,8 +41,6 @@ export interface AppApi {
   sync: SyncState | null;
   /** Ajustes con sus valores por defecto. */
   prefs: Prefs;
-  /** Aviso para la pantalla de acceso (p. ej. enlace de recuperación caducado). */
-  authNotice: string;
 
   signIn(email: string, password: string): Promise<void>;
   signUp(email: string, password: string): Promise<void>;
@@ -51,10 +48,7 @@ export interface AppApi {
   saveProfile(p: ProfileInput): Promise<void>;
   updatePrefs(p: Partial<Pick<Profile, 'theme' | 'show_body_weight'>>): Promise<void>;
   updateSettings(p: Partial<Prefs>): Promise<void>;
-  requestPasswordReset(email: string): Promise<void>;
   changePassword(current: string, next: string): Promise<void>;
-  /** Guarda la contraseña nueva al venir del enlace de recuperación y entra en la app. */
-  completeRecovery(next: string): Promise<void>;
   /** Importa registros de un CSV. Devuelve cuántos se guardaron. */
   importBodyWeights(rows: BodyWeightInput[]): Promise<number>;
   importWorkouts(workouts: ImportedWorkout[]): Promise<number>;
@@ -91,7 +85,6 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
   const [editingProfile, setEditingProfile] = useState(false);
   const [toast, setToast] = useState('');
   const [sync, setSync] = useState<SyncState | null>(null);
-  const [authNotice, setAuthNotice] = useState('');
   const unsubSync = useRef<(() => void) | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -144,13 +137,7 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
         setBackend(b);
         const session = await b.auth.getSession();
         if (!alive) return;
-        if (b.auth.recoveryFailed()) {
-          b.auth.finishRecovery();
-          setAuthNotice('El enlace para cambiar la contraseña ha caducado o ya se usó. Pide uno nuevo.');
-        }
-        if (session && b.auth.isRecovery()) setStatus('recovery');
-        else if (session) await loadUser(b, session);
-        else setStatus('signedOut');
+        if (session) await loadUser(b, session); else setStatus('signedOut');
       } catch (e) {
         console.error(e);
         if (!alive) return;
@@ -181,10 +168,9 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
   const api: AppApi = {
     status, bootError, mode: backend?.auth.mode || 'demo', user, data, profile, program,
     tab, setTab, dayId, setDayId, editingProfile, setEditingProfile, toast, showToast, sync,
-    prefs: prefsOf(profile), authNotice,
+    prefs: prefsOf(profile),
 
     async signIn(email, password) {
-      setAuthNotice('');
       const u = await backend!.auth.signIn(email, password);
       await loadUser(backend!, u);
     },
@@ -194,7 +180,6 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
     },
     async signOut() {
       const pending = sync?.pending || 0;
-      backend!.auth.finishRecovery();
       await backend!.auth.signOut();
       releaseStore();
       if (pending) showToast(`Quedan ${pending} ${pending === 1 ? 'cambio' : 'cambios'} por enviar: se enviarán cuando vuelvas a entrar con conexión.`);
@@ -211,18 +196,8 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
       const saved = await store().saveProfile({ ...rest, prefs: { ...data.profile.prefs, ...patch } });
       dispatch({ type: 'profile', profile: saved });
     },
-    async requestPasswordReset(email) {
-      await backend!.auth.requestPasswordReset(email);
-    },
     async changePassword(current, next) {
       await backend!.auth.updatePassword(next, current);
-    },
-    async completeRecovery(next) {
-      await backend!.auth.updatePassword(next);
-      backend!.auth.finishRecovery();
-      const u = await backend!.auth.getSession();
-      if (u) await loadUser(backend!, u); else setStatus('signedOut');
-      showToast('Contraseña cambiada.');
     },
     async importBodyWeights(rows) {
       let n = 0;

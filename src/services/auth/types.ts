@@ -7,16 +7,8 @@ export interface Auth {
   signIn(email: string, password: string): Promise<AuthUser>;
   signOut(): Promise<void>;
   getSession(): Promise<AuthUser | null>;
-  /** Envía el enlace para elegir una contraseña nueva. No revela si el email tiene cuenta. */
-  requestPasswordReset(email: string): Promise<void>;
-  /** Cambia la contraseña de la sesión actual. `current` es obligatoria salvo al venir de un enlace de recuperación. */
-  updatePassword(newPassword: string, current?: string): Promise<void>;
-  /** La app se abrió desde un enlace de recuperación de contraseña. */
-  isRecovery(): boolean;
-  /** El enlace de recuperación ha caducado o ya se usó. */
-  recoveryFailed(): boolean;
-  /** Limpia la marca de recuperación (y la URL). */
-  finishRecovery(): void;
+  /** Cambia la contraseña de la sesión actual; exige la contraseña actual. */
+  updatePassword(newPassword: string, current: string): Promise<void>;
 }
 
 /** Error mostrable al usuario. `field` indica qué campo lo causó, si aplica. */

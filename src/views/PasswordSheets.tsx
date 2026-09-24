@@ -1,5 +1,5 @@
-/* Cambiar la contraseña (Perfil) y elegir una nueva al venir del enlace de recuperación. */
-import { useRef, useState, type FormEvent } from 'react';
+/* Cambiar la contraseña desde Perfil (exige la actual). */
+import { useState, type FormEvent } from 'react';
 import { Button } from '../components/Button';
 import { TextField } from '../components/Fields';
 import { Icon } from '../components/Icon';
@@ -51,40 +51,5 @@ export function ChangePasswordSheet({ onClose }: { onClose(): void }) {
         <Button variant="primary" block type="submit" loading={busy}>Guardar contraseña</Button>
       </form>
     </Sheet>
-  );
-}
-
-/** Pantalla completa al abrir el enlace del email de recuperación. */
-export function NewPasswordView() {
-  const { completeRecovery, signOut } = useApp();
-  const [next, setNext] = useState('');
-  const [repeat, setRepeat] = useState('');
-  const [errors, setErrors] = useState<Errors>({});
-  const [busy, setBusy] = useState(false);
-  const nextRef = useRef<HTMLInputElement>(null);
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    const errs = check(next, repeat);
-    setErrors(errs);
-    if (errs.next) nextRef.current?.focus();
-    if (Object.keys(errs).length || busy) return;
-    setBusy(true);
-    try { await completeRecovery(next); }
-    catch (err) { setErrors({ form: err instanceof Error ? err.message : 'No se pudo guardar la contraseña.' }); setBusy(false); }
-  };
-
-  return (
-    <main className="auth">
-      <h1 className="h1">Elige una contraseña nueva</h1>
-      <p className="muted lead">Después entrarás directamente en tu cuenta.</p>
-      <form onSubmit={submit} noValidate aria-label="Contraseña nueva">
-        {errors.form && <div className="alert" role="alert"><Icon name="alert" /><p>{errors.form}</p></div>}
-        <TextField ref={nextRef} label="Contraseña nueva" reveal autoComplete="new-password" value={next} onChange={e => setNext(e.target.value)} error={errors.next} hint={errors.next ? undefined : `Mínimo ${MIN_PASSWORD} caracteres`} />
-        <TextField label="Repite la contraseña" type="password" autoComplete="new-password" value={repeat} onChange={e => setRepeat(e.target.value)} error={errors.repeat} />
-        <Button variant="primary" block type="submit" loading={busy}>Guardar contraseña</Button>
-      </form>
-      <button type="button" className="btn btn-link" style={{ alignSelf: 'center' }} onClick={() => signOut()}>Cancelar</button>
-    </main>
   );
 }

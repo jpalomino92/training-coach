@@ -80,26 +80,18 @@ export class DemoAuth implements Auth {
 
   async signOut(): Promise<void> { this.storage.removeItem(SESSION_KEY); }
 
-  async requestPasswordReset(): Promise<void> {
-    throw new AuthError('En modo demo no se pueden enviar correos: las cuentas solo existen en este navegador, así que no hay forma de recuperar la contraseña. Puedes crear una cuenta nueva.');
-  }
-
-  async updatePassword(newPassword: string, current?: string): Promise<void> {
+  async updatePassword(newPassword: string, current: string): Promise<void> {
     const session = await this.getSession();
     if (!session) throw new AuthError('Inicia sesión para cambiar la contraseña.');
     validateNewPassword(newPassword);
     const users = this.users();
     const u = users.find(x => x.id === session.id)!;
-    const ok = current != null && safeEqual(await derive(current, unb64(u.salt), u.iter || this.iterations), u.hash);
+    const ok = safeEqual(await derive(current, unb64(u.salt), u.iter || this.iterations), u.hash);
     if (!ok) throw new AuthError('La contraseña actual no es correcta.', 'password');
     const salt = crypto.getRandomValues(new Uint8Array(16));
     Object.assign(u, { salt: b64(salt), hash: await derive(newPassword, salt, this.iterations), iter: this.iterations });
     this.saveUsers(users);
   }
-
-  isRecovery() { return false; }
-  recoveryFailed() { return false; }
-  finishRecovery() { /* el modo demo no tiene enlaces de recuperación */ }
 
   async getSession(): Promise<AuthUser | null> {
     try {

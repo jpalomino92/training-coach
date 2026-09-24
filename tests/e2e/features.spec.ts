@@ -113,7 +113,7 @@ test('récord personal al superar la mejor marca y constancia semanal', async ({
   await expect(cons.getByRole('listitem', { name: /Semana del 21\/09: 2 de 4/ })).toBeVisible();
 });
 
-test('contraseña: recuperar en modo demo lo explica y cambiarla desde Perfil funciona', async ({ page }) => {
+test('cambiar la contraseña desde Perfil', async ({ page }) => {
   await createUser(page, 'clave@correo.com', 'Iris', ROUTINE.male);
   await tab(page, 'Perfil');
   await page.getByRole('button', { name: 'Cambiar contraseña' }).click();
@@ -128,10 +128,6 @@ test('contraseña: recuperar en modo demo lo explica y cambiarla desde Perfil fu
   await expect(page.getByRole('status').filter({ hasText: 'Contraseña cambiada.' })).toHaveCount(1);
 
   await signOut(page);
-  await page.getByRole('button', { name: '¿Olvidaste tu contraseña?' }).click();
-  await expect(page.getByRole('heading', { name: 'Recuperar contraseña' })).toBeVisible();
-  await expect(page.getByText(/no hay forma de recuperar la contraseña/)).toBeVisible();
-  await page.getByRole('button', { name: 'Iniciar sesión' }).click();
 
   await signIn(page, 'clave@correo.com', PASSWORD);
   await expect(page.getByRole('alert')).toContainText('no son correctos');

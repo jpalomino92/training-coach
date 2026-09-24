@@ -46,7 +46,7 @@ legacy/                  Prototipo original (fuera del build), solo como referen
 - **Hoy**: una serie a la vez, rellenada con la última sesión; temporizador de descanso (sonido y vibración al terminar, pantalla encendida opcional); sensación por ejercicio; notas; récords personales al superar tu mejor marca; constancia semanal ("Esta semana: 2 de 4").
 - **Perfil → Descanso**: los descansos de la rutina o los tuyos (básicos y accesorios por separado). Los datos de la rutina no cambian.
 - **Perfil → Importar y exportar**: CSV de peso corporal y del historial de series (`,` o `;`, coma decimal, fechas `dd/mm/aaaa` o `aaaa-mm-dd`), con vista previa y errores por línea. Plantillas descargables.
-- **Contraseña**: "¿Olvidaste tu contraseña?" envía un enlace (modo Supabase) y "Cambiar contraseña" en Perfil.
+- **Contraseña**: "Cambiar contraseña" en Perfil (pide la actual).
 
 ## Rutinas
 
@@ -65,7 +65,7 @@ Los programas son solo datos (`src/domain/routines.ts`). Para añadir uno, copia
 
 1. Crea el proyecto y ejecuta `supabase/schema.sql` en SQL Editor.
 2. Authentication → Sign In / Providers → Email: con "Confirm email" activado, la app pide confirmar el correo antes de iniciar sesión.
-3. Authentication → URL Configuration: pon la URL pública de la app en **Site URL** y añade `https://TU-APP/**` en **Redirect URLs** (enlaces de confirmación y de recuperación de contraseña, que vuelven a `/?recuperar=1`).
+3. Authentication → URL Configuration: pon la URL pública de la app en **Site URL** y añade `https://TU-APP/**` en **Redirect URLs** (enlaces de confirmación de email).
    Para enviar correos a cualquier persona hace falta un SMTP propio (Authentication → Emails → SMTP Settings): el servicio de correo incluido en Supabase solo envía a los miembros del equipo del proyecto y muy pocos por hora.
    Si el proyecto se creó con una versión anterior de `schema.sql`, ejecuta las migraciones de `supabase/migrations/` en orden.
 4. Pruebas contra el proyecto real (usan `.env.supabase.local`, que no se sube al repositorio):
