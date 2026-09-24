@@ -18,7 +18,7 @@ function ProgressCard({ p }: { p: ExerciseProgress }) {
     <section className="card pc" data-day={p.day.color} aria-label={p.ex.name}>
       <div className="top">
         <ExerciseIllustration pose={p.ex.pose} size="md" />
-        <div className="tx"><h3 className="t" style={{ margin: 0 }}>{p.ex.name}</h3><span className="s">{p.day.name} — {p.day.focus}</span></div>
+        <div className="tx"><h3 className="t" style={{ margin: 0 }}>{p.ex.name}</h3><span className="s">{p.isAlternative ? `Alternativa de ${p.ex.alt} · ` : ''}{p.day.name} — {p.day.focus}</span></div>
       </div>
       <div className="g">
         <div className="stat"><b>{v(p.last)}</b><span>{p.loaded ? 'Último peso' : 'Última marca'}</span></div>

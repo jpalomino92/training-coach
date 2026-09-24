@@ -10,6 +10,7 @@ import { exportBodyWeightsCsv, exportSetsCsv } from '../domain/csv';
 import { fmtDate, fmtDayMonth, localDate, toDate } from '../domain/format';
 import type { Prefs, ThemePref } from '../domain/types';
 import { downloadText } from '../services/download';
+import { BAR_OPTIONS } from '../domain/plates';
 import { useApp } from '../state/AppContext';
 import { ImportSheet } from './ImportSheet';
 import { ChangePasswordSheet } from './PasswordSheets';
@@ -140,6 +141,15 @@ export function ProfileView() {
         <SwitchRow title="Mantener la pantalla encendida" checked={draft.keep_awake && wakeLockSupported()}
           description={wakeLockSupported() ? 'Mientras tengas un entrenamiento en curso. Gasta algo más de batería.' : 'Tu navegador no lo permite.'}
           onChange={v => { if (wakeLockSupported()) save({ keep_awake: v }); }} />
+        <div className="setrow" role="group" aria-labelledby="p-barra" aria-describedby="p-barra-d">
+          <div className="tx">
+            <b id="p-barra">Peso de la barra</b>
+            <span id="p-barra-d">Para calcular los discos por lado en los ejercicios con barra.</span>
+            <div className="seg cols-3" style={{ marginTop: 8 }}>
+              {BAR_OPTIONS.map(b => <button key={b} type="button" aria-pressed={draft.bar_kg === b} onClick={() => save({ bar_kg: b })}>{b} kg</button>)}
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className="card card-pad" aria-labelledby="p-datos-csv">

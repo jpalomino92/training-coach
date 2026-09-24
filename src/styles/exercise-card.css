@@ -132,3 +132,10 @@
 .set-done.pr{box-shadow:inset 0 0 0 2px var(--day)}
 .set-done.pr .ck{background:var(--day);color:var(--day-ink)}
 .set-done .pr-text{color:var(--day-text)}
+/* Alternativa del día */
+.alt-switch{display:flex;flex-direction:column;gap:4px;font-size:var(--fs-sm);line-height:1.4}
+.alt-switch.on{padding:10px 12px;border-radius:var(--r-md);background:var(--day-tint)}
+.alt-switch .btn-link{align-self:flex-start;height:auto;min-height:var(--tap);padding:0;white-space:normal;text-align:left;font-size:15px;line-height:1.3}
+.alt-switch .btn-link svg{width:18px;height:18px}
+.set-edit .plates{margin-top:6px;font-size:var(--fs-sm);color:var(--muted);text-align:center;line-height:1.35}
+.alt-switch .btn-link svg{flex-shrink:0;width:20px;height:20px}

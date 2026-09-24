@@ -20,6 +20,8 @@ export type Tab = 'hoy' | 'rutina' | 'progreso' | 'historial' | 'perfil';
 export type Status = 'loading' | 'error' | 'signedOut' | 'ready';
 
 export interface SetValues { weight: number | null; reps: number; rir: number | null }
+export interface ToastAction { label: string; run(): void | Promise<void> }
+export interface Toast { msg: string; action?: ToastAction; id: number }
 
 export interface AppApi {
   status: Status;
@@ -35,8 +37,9 @@ export interface AppApi {
   setDayId(id: string): void;
   editingProfile: boolean;
   setEditingProfile(v: boolean): void;
-  toast: string;
-  showToast(msg: string): void;
+  toast: Toast | null;
+  /** Aviso breve. Con `action` (p. ej. Deshacer) dura 6 s. */
+  showToast(msg: string, action?: ToastAction): void;
   /** Estado de la cola sin conexión (null en modo demo, que siempre es local). */
   sync: SyncState | null;
   /** Ajustes con sus valores por defecto. */
@@ -60,6 +63,7 @@ export interface AppApi {
   saveNote(exKey: string, text: string): Promise<void>;
   finishWorkout(day: WorkoutDay): Promise<void>;
   deleteWorkout(id: string): Promise<void>;
+  saveWorkoutNote(workoutId: string, text: string): Promise<void>;
   addBodyWeight(b: BodyWeightInput): Promise<void>;
   updateBodyWeight(id: string, b: Partial<BodyWeightInput>): Promise<void>;
   deleteBodyWeight(id: string): Promise<void>;
@@ -83,16 +87,23 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
   const [tab, setTabState] = useState<Tab>('hoy');
   const [dayIdState, setDayId] = useState<string>('');
   const [editingProfile, setEditingProfile] = useState(false);
-  const [toast, setToast] = useState('');
+  const [toast, setToast] = useState<Toast | null>(null);
   const [sync, setSync] = useState<SyncState | null>(null);
   const unsubSync = useRef<(() => void) | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
+  const showToast = useCallback((msg: string, action?: ToastAction) => {
+    setToast({ msg, action, id: Date.now() });
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(''), 3200);
+    toastTimer.current = setTimeout(() => setToast(null), action ? 6000 : 3200);
   }, []);
+
+  /** Ejecuta la acción de deshacer y cierra el aviso. */
+  const undo = (fn: () => Promise<void>) => async () => {
+    clearTimeout(toastTimer.current);
+    setToast(null);
+    try { await fn(); showToast('Restaurado.'); } catch (e) { showToast(e instanceof Error ? e.message : 'No se pudo deshacer.'); }
+  };
 
   const store = () => {
     if (!storeRef.current) throw new Error('No hay sesión iniciada.');
@@ -250,6 +261,11 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
       if (w && w.status === 'completed') {
         dispatch({ type: 'workout', workout: await store().updateWorkout(w.id, { status: 'in_progress', completed_at: null }) });
       }
+      showToast('Serie borrada.', { label: 'Deshacer', run: undo(async () => {
+        const { id, workout_id, exercise_key, set_index, weight, reps, rir } = set;
+        dispatch({ type: 'set', set: await store().upsertSet({ id, workout_id, exercise_key, set_index, weight, reps, rir }) });
+        if (w && w.status === 'completed') dispatch({ type: 'workout', workout: await store().updateWorkout(w.id, { status: 'completed', completed_at: w.completed_at }) });
+      }) });
     },
     async setFeel(day, exKey, feel) {
       const w = await ensureWorkout(day);
@@ -266,8 +282,22 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
       dispatch({ type: 'workout', workout: await store().updateWorkout(w.id, { status: 'completed', completed_at: new Date().toISOString() }) });
     },
     async deleteWorkout(id) {
+      const w = data.workouts.find(x => x.id === id);
+      const ws = data.sets.filter(x => x.workout_id === id);
       await store().deleteWorkout(id);
       dispatch({ type: 'workoutRemoved', id });
+      if (!w) return;
+      showToast('Entrenamiento eliminado.', { label: 'Deshacer', run: undo(async () => {
+        await store().createWorkout({ id: w.id, program_id: w.program_id, day_id: w.day_id, status: w.status, started_at: w.started_at, feel: w.feel });
+        dispatch({ type: 'workout', workout: await store().updateWorkout(w.id, { status: w.status, completed_at: w.completed_at, notes: w.notes, feel: w.feel }) });
+        for (const s of ws) {
+          const { id: sid, workout_id, exercise_key, set_index, weight, reps, rir } = s;
+          dispatch({ type: 'set', set: await store().upsertSet({ id: sid, workout_id, exercise_key, set_index, weight, reps, rir }) });
+        }
+      }) });
+    },
+    async saveWorkoutNote(workoutId, text) {
+      dispatch({ type: 'workout', workout: await store().updateWorkout(workoutId, { notes: text }) });
     },
     async addBodyWeight(b) {
       dispatch({ type: 'bodyWeight', bodyWeight: await store().addBodyWeight(b) });
@@ -276,8 +306,12 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
       dispatch({ type: 'bodyWeight', bodyWeight: await store().updateBodyWeight(id, b) });
     },
     async deleteBodyWeight(id) {
+      const b = data.bodyWeights.find(x => x.id === id);
       await store().deleteBodyWeight(id);
       dispatch({ type: 'bodyWeightRemoved', id });
+      if (b) showToast('Registro eliminado.', { label: 'Deshacer', run: undo(async () => {
+        dispatch({ type: 'bodyWeight', bodyWeight: await store().addBodyWeight({ id: b.id, date: b.date, weight_kg: b.weight_kg, note: b.note }) });
+      }) });
     }
   };
 

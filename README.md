@@ -44,6 +44,9 @@ legacy/                  Prototipo original (fuera del build), solo como referen
 ## Funciones
 
 - **Hoy**: una serie a la vez, rellenada con la última sesión; temporizador de descanso (sonido y vibración al terminar, pantalla encendida opcional); sensación por ejercicio; notas; récords personales al superar tu mejor marca; constancia semanal ("Esta semana: 2 de 4").
+- **Alternativa del día** ("¿Máquina ocupada?"): usa la alternativa de la rutina; sus series se guardan aparte (clave `ejercicio__alt`) con su propio historial y sugerencia.
+- **Resumen al terminar**: duración, series, volumen, récords y comparación con la sesión anterior del mismo día. **Nota del entrenamiento** que se guarda sola.
+- **Deshacer** al borrar una serie, un entrenamiento o un peso corporal. **Calculadora de discos** en los ejercicios con barra (barra de 20, 15 o 10 kg). **Calendario mensual** en Historial.
 - **Perfil → Descanso**: los descansos de la rutina o los tuyos (básicos y accesorios por separado). Los datos de la rutina no cambian.
 - **Perfil → Importar y exportar**: CSV de peso corporal y del historial de series (`,` o `;`, coma decimal, fechas `dd/mm/aaaa` o `aaaa-mm-dd`), con vista previa y errores por línea. Plantillas descargables.
 - **Contraseña**: "Cambiar contraseña" en Perfil (pide la actual).

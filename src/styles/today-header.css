@@ -53,3 +53,14 @@
 .status svg.g{width:16px;height:16px;flex-shrink:0}
 .week-goal{margin-top:4px;font-size:var(--fs-sm);color:var(--muted)}
 .week-goal b{color:var(--ink);font-weight:600}
+.summary-wrap,.note-wrap{padding:16px 16px 0}
+.summary{padding:16px;display:flex;flex-direction:column;gap:12px}
+.summary .done-head{margin:0;font-size:17px}
+.sum-grid{margin:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.sum-grid div{padding:10px 12px;border-radius:var(--r-md);background:var(--surface-2)}
+.sum-grid dt{font-size:var(--fs-xs);color:var(--muted)}
+.sum-grid dd{margin:2px 0 0;font:700 22px/1.1 var(--font-display);font-variant-numeric:tabular-nums}
+.sum-pr,.sum-pain{display:flex;gap:8px;align-items:flex-start;font-size:var(--fs-sm);line-height:1.4}
+.sum-pr svg{width:20px;height:20px;flex-shrink:0;color:var(--day-text)}
+.sum-pain svg{width:20px;height:20px;flex-shrink:0;color:var(--danger)}
+.workout-note textarea{min-height:72px}

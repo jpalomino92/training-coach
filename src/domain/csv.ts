@@ -5,6 +5,7 @@
    (lo que abre bien Excel en español).
    ========================================================== */
 import { fmtNum, localDate, parseNum } from './format';
+import { altExercise, baseKey, resolveExercise } from './alternatives';
 import { programList } from './routines';
 import type { BodyWeightInput, Exercise, Program, UserData } from './types';
 
@@ -102,10 +103,12 @@ export interface ImportedSet { exercise: Exercise; set_index: number; weight: nu
 export interface ImportedWorkout { date: string; dayId: string; sets: ImportedSet[] }
 export interface ExerciseImport { workouts: ImportedWorkout[]; setCount: number; errors: CsvError[]; skipped: number }
 
-/** Busca el ejercicio en la rutina por nombre o por clave, sin tener en cuenta tildes ni mayúsculas. */
+/** Busca el ejercicio en la rutina por nombre o por clave, sin tener en cuenta tildes ni mayúsculas.
+    Si no está, busca entre las alternativas de la rutina (se guarda como alternativa). */
 export function findByName(program: Program, name: string): Exercise | null {
   const n = norm(name);
   for (const d of program.days) for (const e of d.exercises) if (norm(e.name) === n || norm(e.key) === n) return e;
+  for (const d of program.days) for (const e of d.exercises) if (norm(e.alt) === n) return altExercise(e);
   return null;
 }
 
@@ -159,7 +162,7 @@ export function importExerciseSets(text: string, program: Program, data: Pick<Us
   for (const [date, sets] of [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     // El día de la rutina con más ejercicios del grupo
     const day = [...program.days].sort((a, b) =>
-      sets.filter(s => b.exercises.some(e => e.key === s.exercise.key)).length - sets.filter(s => a.exercises.some(e => e.key === s.exercise.key)).length)[0];
+      sets.filter(s => b.exercises.some(e => e.key === baseKey(s.exercise.key))).length - sets.filter(s => a.exercises.some(e => e.key === baseKey(s.exercise.key))).length)[0];
     res.workouts.push({ date, dayId: day.id, sets });
     res.setCount += sets.length;
   }
@@ -188,7 +191,7 @@ export function exportSetsCsv(data: Pick<UserData, 'workouts' | 'sets'>): string
     const date = localDate(new Date(w.completed_at || w.started_at));
     const sets = data.sets.filter(s => s.workout_id === w.id).sort((a, b) => a.exercise_key.localeCompare(b.exercise_key) || a.set_index - b.set_index);
     for (const s of sets) {
-      const ex = program?.days.flatMap(d => d.exercises).find(e => e.key === s.exercise_key);
+      const ex = resolveExercise(program, s.exercise_key);
       rows.push([date, ex?.name || s.exercise_key, s.set_index + 1, s.weight, s.reps, s.rir, program?.shortName || w.program_id, day?.name || w.day_id]);
     }
   }

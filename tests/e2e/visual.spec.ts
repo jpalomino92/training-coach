@@ -3,7 +3,7 @@
    La fecha se fija en el miércoles 23/09/2026, como en el diseño. */
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { completeSet, currentSet, onboard, ROUTINE, signIn, signOut, signUp, skipRest, tab } from './helpers';
+import { completeSet, completeWholeDay, currentSet, onboard, PASSWORD, ROUTINE, signIn, signOut, signUp, skipRest, tab } from './helpers';
 
 const WIDTHS: [string, number, number][] = [['375', 375, 667], ['390', 390, 844], ['430', 430, 932], ['tablet', 820, 1180], ['escritorio', 1280, 900]];
 const THEMES = ['light', 'dark'] as const;
@@ -175,5 +175,16 @@ for (const [label, width, height] of WIDTHS) for (const theme of THEMES) {
     await page.getByRole('dialog', { name: 'Importar CSV' }).getByRole('button', { name: 'Cancelar' }).click();
     await page.getByRole('button', { name: 'Cambiar contraseña' }).click();
     await shot('hoja-cambiar-contrasena');
+    await page.keyboard.press('Escape');
+
+    // Carmen vuelve: entrenamiento completo y su resumen
+    await signOut(page);
+    await signIn(page, 'carmen@correo.com', PASSWORD);
+    await expect(page.getByRole('heading', { name: 'Hola, Carmen' })).toBeVisible();
+    await scrollTo(page.locator('.xcard'));
+    await shot('hoy-opcion-alternativa');
+    await completeWholeDay(page, { weight: '20', reps: '10', rir: '3' });
+    await scrollTo(page.getByRole('region', { name: /Entrenamiento completado/ }));
+    await shot('hoy-resumen');
   });
 }

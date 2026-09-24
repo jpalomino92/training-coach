@@ -9,6 +9,8 @@ export interface TechniquePanelHandle { showAlternative(): void }
 
 interface Props {
   ex: Exercise;
+  /** El ejercicio es la alternativa del día: su "alternativa" es el ejercicio de la rutina. */
+  isAlternative?: boolean;
   feel?: Feel;
   onFeel(v: Feel | null): void;
   note: string;
@@ -16,7 +18,7 @@ interface Props {
   showFeel: boolean;
 }
 
-export const TechniquePanel = forwardRef<TechniquePanelHandle, Props>(function TechniquePanel({ ex, feel, onFeel, note, onSaveNote, showFeel }, ref) {
+export const TechniquePanel = forwardRef<TechniquePanelHandle, Props>(function TechniquePanel({ ex, isAlternative, feel, onFeel, note, onSaveNote, showFeel }, ref) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(note);
   const bodyId = useId(), feelId = useId(), noteId = useId(), altId = useId();
@@ -48,8 +50,8 @@ export const TechniquePanel = forwardRef<TechniquePanelHandle, Props>(function T
       </button>
       <div id={bodyId} className="acc-body" hidden={!open}>
         <dl>
-          <div><dt className="eyebrow">Técnica</dt><dd>{ex.cue}</dd></div>
-          <div><dt className="eyebrow" id={altId}>Alternativa</dt><dd ref={altRef} tabIndex={-1} aria-labelledby={altId}>{ex.alt}</dd></div>
+          {ex.cue && <div><dt className="eyebrow">Técnica</dt><dd>{ex.cue}</dd></div>}
+          <div><dt className="eyebrow" id={altId}>{isAlternative ? 'Ejercicio de la rutina' : 'Alternativa'}</dt><dd ref={altRef} tabIndex={-1} aria-labelledby={altId}>{ex.alt}</dd></div>
           <div><dt className="eyebrow">Músculo principal</dt><dd>{ex.muscle}</dd></div>
         </dl>
         {ex.warn && (

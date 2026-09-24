@@ -20,7 +20,16 @@ import type { Backend } from './services/backend';
 
 function Toast() {
   const { toast } = useApp();
-  return <div className="sr-only-live" role="status" aria-live="polite">{toast && <div className="toast">{toast}</div>}</div>;
+  return (
+    <div className="sr-only-live" role="status" aria-live="polite">
+      {toast && (
+        <div className={`toast${toast.action ? ' with-action' : ''}`} key={toast.id}>
+          <span>{toast.msg}</span>
+          {toast.action && <button type="button" className="toast-action" onClick={() => void toast.action!.run()}>{toast.action.label}</button>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function Main() {

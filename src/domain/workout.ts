@@ -1,4 +1,5 @@
 /* Selectores puros sobre los datos del usuario. No dependen de React. */
+import { altExercise, altKey } from './alternatives';
 import { DAY_MS, sameDay, toDate } from './format';
 import { findExercise } from './routines';
 import { summarize } from './progression';
@@ -45,10 +46,15 @@ export function defaultDayId(data: UserData, program: Program, now = Date.now())
 export type DayStatus = 'none' | 'prog' | 'done';
 export const dayStatus = (w: Workout | null): DayStatus => (!w ? 'none' : w.status === 'completed' ? 'done' : 'prog');
 
+/** Un ejercicio está hecho si todas sus series están registradas (con el ejercicio o con su alternativa). */
 export function isExerciseDone(sets: WorkoutSet[], ex: Exercise): boolean {
-  for (let i = 0; i < ex.sets; i++) if (!sets.some(s => s.exercise_key === ex.key && s.set_index === i)) return false;
+  const keys = [ex.key, altKey(ex.key)];
+  for (let i = 0; i < ex.sets; i++) if (!sets.some(s => keys.includes(s.exercise_key) && s.set_index === i)) return false;
   return true;
 }
+
+/** Hoy se hace la alternativa si ya hay alguna serie suya registrada. */
+export const usesAlternative = (sets: WorkoutSet[], ex: Exercise) => sets.some(s => s.exercise_key === altKey(ex.key));
 export const isDayDone = (sets: WorkoutSet[], day: WorkoutDay) => day.exercises.every(e => isExerciseDone(sets, e));
 
 /** Misma serie de la última sesión (o la última registrada si entonces hubo menos series). */
@@ -80,6 +86,8 @@ export interface ExerciseProgress {
   ex: Exercise;
   day: WorkoutDay;
   loaded: boolean;
+  /** Es la alternativa de un ejercicio de la rutina. */
+  isAlternative: boolean;
   last: number;
   max: number;
   /** Un punto por semana: [semana, valor máximo]. */
@@ -97,7 +105,8 @@ export function exerciseProgress(data: UserData, program: Program, startDate: st
   const ws = programWorkouts(data, program).slice().sort((a, b) => +new Date(a.started_at) - +new Date(b.started_at));
   for (const day of program.days) {
     if (dayFilter && day.id !== dayFilter) continue;
-    for (const ex of day.exercises) {
+    // Cada ejercicio y, si se ha usado, su alternativa (con su propio historial)
+    for (const ex of day.exercises.flatMap(e => [e, altExercise(e)])) {
       if (seen.has(ex.key)) continue;
       seen.add(ex.key);
       const sessions: { week: number; top: number; best: number }[] = [];
@@ -113,7 +122,7 @@ export function exerciseProgress(data: UserData, program: Program, startDate: st
       const weeks = new Map<number, number>();
       sessions.forEach(s => weeks.set(s.week, Math.max(weeks.get(s.week) ?? 0, metric(s))));
       out.push({
-        ex: findExercise(program, ex.key) || ex, day, loaded,
+        ex: findExercise(program, ex.key) || ex, day, loaded, isAlternative: ex.key === altKey(ex.key),
         last: metric(sessions[sessions.length - 1]),
         max: Math.max(...sessions.map(metric)),
         weeks: [...weeks.entries()].sort((a, b) => a[0] - b[0])

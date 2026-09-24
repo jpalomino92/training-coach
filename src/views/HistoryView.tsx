@@ -4,11 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '../components/Button';
 import { DiscBadge } from '../components/DayDisc';
 import { ExerciseIllustration } from '../components/ExerciseIllustration';
+import { MonthCalendar } from '../components/MonthCalendar';
 import { Icon } from '../components/Icon';
 import { fmtMonthYear, fmtNum, fmtWeekdayShort, weightRange } from '../domain/format';
-import { findExercise, findExerciseAnywhere, routinePrograms } from '../domain/routines';
+import { baseKey, resolveExercise } from '../domain/alternatives';
+import { routinePrograms } from '../domain/routines';
 import type { Workout, WorkoutSet } from '../domain/types';
 import { recordSetIds } from '../domain/records';
+import { fmtMinutes, fmtThousands, workoutSummary } from '../domain/summary';
 import { byStartDesc, setsOf, totalSets } from '../domain/workout';
 import { useApp } from '../state/AppContext';
 
@@ -24,7 +27,7 @@ function allRecordIds(workouts: Workout[], sets: WorkoutSet[]): Set<string> {
   }
   for (const [k, list] of groups) {
     const [pid, key] = k.split('|');
-    const ex = (routinePrograms[pid] && findExercise(routinePrograms[pid], key)) || findExerciseAnywhere(key);
+    const ex = resolveExercise(routinePrograms[pid], key);
     if (!ex) continue;
     list.sort((a, b) => (when.get(a.workout_id)! - when.get(b.workout_id)!) || a.set_index - b.set_index);
     recordSetIds(ex, list).forEach(id => out.add(id));
@@ -33,7 +36,7 @@ function allRecordIds(workouts: Workout[], sets: WorkoutSet[]): Set<string> {
 }
 
 function HistoryCard({ w, sets, open, onToggle, records }: { w: Workout; sets: WorkoutSet[]; open: boolean; onToggle(): void; records: Set<string> }) {
-  const { deleteWorkout, showToast, program: current } = useApp();
+  const { deleteWorkout, showToast, program: current, data } = useApp();
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -48,17 +51,17 @@ function HistoryCard({ w, sets, open, onToggle, records }: { w: Workout; sets: W
     ? (sets.length >= total ? `✓ Completado · ${sets.length} series` : `◐ Terminado con ${sets.length} de ${total} series`)
     : `◐ En progreso · ${sets.length} de ${total} series`;
   const keys = [...new Set(sets.map(s => s.exercise_key))];
-  const order = (k: string) => day?.exercises.findIndex(e => e.key === k) ?? 0;
+  const order = (k: string) => day?.exercises.findIndex(e => e.key === baseKey(k)) ?? 0;
   keys.sort((a, b) => order(a) - order(b));
 
   const remove = async () => {
     setBusy(true);
-    try { await deleteWorkout(w.id); showToast('Entrenamiento eliminado'); }
+    try { await deleteWorkout(w.id); }
     catch (e) { showToast(e instanceof Error ? e.message : 'No se pudo eliminar.'); setBusy(false); }
   };
 
   return (
-    <section className={`card hcard${open ? ' open' : ''}`} data-day={day?.color || 'black'}>
+    <section className={`card hcard${open ? ' open' : ''}`} data-day={day?.color || 'black'} id={`hist-${w.id}`}>
       <button type="button" className="drow" aria-expanded={open} aria-controls={`h-${w.id}`} onClick={onToggle}>
         {day ? <DiscBadge day={day} size={40} /> : <span className="disc dc-black" style={{ width: 40, height: 40 }} aria-hidden="true" />}
         <span className="tx">
@@ -69,9 +72,15 @@ function HistoryCard({ w, sets, open, onToggle, records }: { w: Workout; sets: W
       </button>
       {open && (
         <div id={`h-${w.id}`} className="stack-sm">
+          {(() => {
+            const s = workoutSummary(data, w);
+            const bits = [s.minutes != null ? fmtMinutes(s.minutes) : '', s.volume > 0 ? `${fmtThousands(s.volume)} kg de volumen` : ''].filter(Boolean);
+            return bits.length ? <p className="sm muted">{bits.join(' · ')}</p> : null;
+          })()}
+          {w.notes && <p className="hist-note"><b>Nota:</b> {w.notes}</p>}
           <ul className="hl">
             {keys.map(k => {
-              const ex = (pr && findExercise(pr, k)) || findExerciseAnywhere(k);
+              const ex = resolveExercise(pr, k);
               const ss = sets.filter(s => s.exercise_key === k).sort((a, b) => a.set_index - b.set_index);
               const unit = ex?.unit === 's' ? ' s' : '';
               const weights = ss.map(s => s.weight || 0);
@@ -82,7 +91,7 @@ function HistoryCard({ w, sets, open, onToggle, records }: { w: Workout; sets: W
               ].filter(Boolean).join(' · ');
               return (
                 <li key={k}>
-                  <b>{ex?.name || k}</b>
+                  <b>{ex?.name || k}{k !== baseKey(k) && <span className="alt-tag"> · alternativa</span>}</b>
                   <span>{line}</span>
                   {ss.some(x => records.has(x.id)) && <span className="pr-mark"><Icon name="trophy" />Récord personal</span>}
                   {w.feel?.[k] === 'pain' && <span className="pain-mark">Marcado con dolor articular, de espalda o neurológico.</span>}
@@ -138,6 +147,10 @@ export function HistoryView() {
   return (
     <main className="screen">
       <h1 className="h1">Historial</h1>
+      <MonthCalendar workouts={data.workouts} onPick={id => {
+        setOpen(id);
+        requestAnimationFrame(() => document.getElementById(`hist-${id}`)?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
+      }} />
       {groups.map(g => (
         <section key={g.label} className="stack-sm" aria-label={g.label}>
           <h2 className="eyebrow">{g.label}</h2>

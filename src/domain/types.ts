@@ -77,6 +77,8 @@ export interface Prefs {
   sound: boolean;
   /** Mantener la pantalla encendida con un entrenamiento en curso. */
   keep_awake: boolean;
+  /** Peso de la barra para la calculadora de discos (kg). */
+  bar_kg: number;
 }
 
 /* ---------- Registros (todos llevan user_id) ---------- */

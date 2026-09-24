@@ -138,3 +138,20 @@
 .field:focus-within .file-pick{outline:3px solid var(--focus);outline-offset:3px}
 .import-result{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:var(--r-md);background:var(--surface-2)}
 .import-errors ul{padding-left:18px;display:flex;flex-direction:column;gap:2px;color:var(--danger)}
+.alt-tag{font-weight:400;color:var(--muted)}
+.hist-note{font-size:15px;line-height:1.4;padding:8px 10px;border-radius:var(--r-md);background:var(--surface-2)}
+/* Calendario mensual */
+.calendar{padding:12px 12px 14px;display:flex;flex-direction:column;gap:8px}
+.cal-hd{display:grid;grid-template-columns:48px minmax(0,1fr) 48px;align-items:center;gap:8px}
+.cal-hd .tx{display:flex;flex-direction:column;align-items:center;gap:2px}
+.cal-hd .step{height:var(--tap)}
+.cal-hd .step[aria-disabled="true"]{opacity:.4;cursor:not-allowed}
+.cal-grid{width:100%;border-collapse:separate;border-spacing:3px;table-layout:fixed}
+.cal-grid th{font:600 var(--fs-label)/1 var(--font-display);color:var(--muted);padding:4px 0}
+.cal-grid td{padding:0;text-align:center}
+.cal-day{position:relative;display:inline-flex;align-items:center;justify-content:center;width:100%;max-width:44px;aspect-ratio:1;min-height:36px;border-radius:50%;border:0;background:none;font:600 15px/1 var(--font-body);color:var(--muted);font-variant-numeric:tabular-nums}
+.cal-day.on{cursor:pointer;color:#fff;font-weight:700;background:var(--dc);box-shadow:inset 0 0 0 3px rgba(0,0,0,.14)}
+.cal-day.on.dc-red{--dc:var(--red)} .cal-day.on.dc-blue{--dc:var(--blue)} .cal-day.on.dc-yellow{--dc:var(--yellow);color:#1C2230} .cal-day.on.dc-green{--dc:var(--green)} .cal-day.on.dc-black{--dc:var(--black)}
+[data-theme="dark"] .cal-day.on{color:#0F1522}
+.cal-day i{position:absolute;right:-2px;top:-2px;min-width:16px;height:16px;border-radius:8px;background:var(--ink);color:var(--surface);font:700 11px/16px var(--font-body);font-style:normal}
+.cal-grid td.today .cal-day{outline:2px solid var(--ink);outline-offset:1px}

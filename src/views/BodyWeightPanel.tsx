@@ -53,7 +53,7 @@ function WeightSheet({ editing, last, onClose }: { editing: BodyWeight | null; l
   const remove = async () => {
     if (!editing) return;
     setBusy(true);
-    try { await deleteBodyWeight(editing.id); showToast('Registro eliminado.'); onClose(); }
+    try { await deleteBodyWeight(editing.id); onClose(); }
     catch (ex) { showToast(ex instanceof Error ? ex.message : 'No se pudo eliminar.'); setBusy(false); }
   };
 

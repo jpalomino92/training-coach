@@ -1,6 +1,7 @@
 /* Filas de serie: pendiente, editable (nueva o corrigiendo una registrada) y registrada. */
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { fmtNum, parseNum, repLabel, setText } from '../domain/format';
+import { platesText } from '../domain/plates';
 import type { Exercise, WorkoutSet } from '../domain/types';
 import { Button } from './Button';
 import { FieldError, NumberField } from './Fields';
@@ -63,9 +64,11 @@ interface EditProps {
   onSubmit(v: { weight: number | null; reps: number; rir: number | null }): Promise<void>;
   onCancel?(): void;
   onDelete?(): Promise<void>;
+  /** Ejercicio con barra: muestra los discos por lado (peso de la barra en kg). */
+  barKg?: number;
 }
 
-export function SetEditor({ ex, index, mode, initial, reference, onSubmit, onCancel, onDelete }: EditProps) {
+export function SetEditor({ ex, index, mode, initial, reference, onSubmit, onCancel, onDelete, barKg }: EditProps) {
   const [d, setD] = useState<SetDraft>(initial);
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
@@ -104,7 +107,8 @@ export function SetEditor({ ex, index, mode, initial, reference, onSubmit, onCan
           ? <button type="button" className="btn btn-link danger-link" onClick={del}>Eliminar serie</button>
           : reference && <span className="muted">{reference}</span>}
       </div>
-      <div className="w"><WeightStepper ref={weightRef} value={d.weight} step={ex.weightStep} onChange={v => setD({ ...d, weight: v })} error={!!errors.weight} errorId={errId} /></div>
+      <div className="w"><WeightStepper ref={weightRef} value={d.weight} step={ex.weightStep} onChange={v => setD({ ...d, weight: v })} error={!!errors.weight} errorId={errId} />
+        {barKg != null && <p className="plates" aria-live="polite">{platesText(parseNum(d.weight), barKg)}</p>}</div>
       <div className="two">
         <NumberField ref={repsRef} label={repLabel(ex)} value={d.reps} onChange={v => setD({ ...d, reps: v })} error={!!errors.reps} errorId={errId} />
         <NumberField ref={rirRef} label="RIR" value={d.rir} onChange={v => setD({ ...d, rir: v })} error={!!errors.rir} errorId={errId} decimal />
