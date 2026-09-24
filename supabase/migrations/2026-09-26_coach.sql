@@ -77,6 +77,13 @@ create policy "coach manages invites" on public.coach_invites for all to authent
   with check (coach_id = (select auth.uid()) and public.is_coach());
 -- Los alumnos no leen invitaciones (no se pueden enumerar códigos).
 
+-- Comprobaciones cruzadas en funciones security definer: evitan que las políticas
+-- de custom_programs y assignments se llamen entre sí (recursión infinita).
+create or replace function public.owns_program(p_id uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.custom_programs where id = p_id and coach_id = auth.uid());
+$$;
+
 -- ---------- Rutina asignada a cada alumno ----------
 create table if not exists public.assignments (
   athlete_id uuid primary key references auth.users(id) on delete cascade,
@@ -85,6 +92,12 @@ create table if not exists public.assignments (
   assigned_at timestamptz not null default now()
 );
 alter table public.assignments enable row level security;
+create or replace function public.is_assigned_program(p_id uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.assignments where program_id = p_id and athlete_id = auth.uid());
+$$;
+revoke all on function public.owns_program(uuid), public.is_assigned_program(uuid) from public, anon;
+grant execute on function public.owns_program(uuid), public.is_assigned_program(uuid) to authenticated;
 drop policy if exists "see own assignment" on public.assignments;
 create policy "see own assignment" on public.assignments for select to authenticated
   using (athlete_id = (select auth.uid()) or coach_id = (select auth.uid()));
@@ -94,7 +107,7 @@ create policy "coach assigns" on public.assignments for all to authenticated
   with check (
     coach_id = (select auth.uid()) and public.is_coach()
     and exists (select 1 from public.coach_links l where l.coach_id = (select auth.uid()) and l.athlete_id = assignments.athlete_id)
-    and exists (select 1 from public.custom_programs p where p.id = assignments.program_id and p.coach_id = (select auth.uid()))
+    and public.owns_program(assignments.program_id)
   );
 drop policy if exists "athlete drops assignment" on public.assignments;
 create policy "athlete drops assignment" on public.assignments for delete to authenticated
@@ -107,7 +120,7 @@ create policy "coach owns programs" on public.custom_programs for all to authent
   with check (coach_id = (select auth.uid()) and public.is_coach());
 drop policy if exists "athlete reads assigned program" on public.custom_programs;
 create policy "athlete reads assigned program" on public.custom_programs for select to authenticated
-  using (exists (select 1 from public.assignments a where a.program_id = custom_programs.id and a.athlete_id = (select auth.uid())));
+  using (public.is_assigned_program(custom_programs.id));
 
 -- ---------- Unirse con un código ----------
 create or replace function public.redeem_invite(p_code text) returns table (joined_coach_id uuid, joined_coach_name text)
