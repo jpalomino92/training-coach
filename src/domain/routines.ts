@@ -67,9 +67,7 @@ export const routinePrograms: Record<string, Program> = {
         E('rdl_bar', 'Peso muerto rumano', 3, '8-10', '2', 150, 'rdl', 'Isquiotibiales y glúteo', 'Rodillas casi fijas. Lleva la cadera atrás hasta sentir estirar el isquio.', 'Peso muerto rumano con mancuernas', { compound: true }),
         E('leg_press', 'Prensa', 3, '10-12', '2', 90, 'legpress', 'Cuádriceps', 'La zona lumbar no se despega del respaldo. No bloquees las rodillas arriba.', 'Sentadilla hack', { compound: true }),
         E('leg_curl_lying', 'Curl femoral tumbado', 3, '10-12', '1-2', 90, 'legcurl', 'Isquiotibiales', 'Cadera pegada al banco. Baja lento, en 3 segundos.', 'Curl femoral sentado'),
-        E('calf_standing', 'Gemelos de pie', 4, '10-15', '1-2', 60, 'calf', 'Gemelos', 'Pausa de 1 segundo abajo, en estiramiento completo.', 'Gemelos en prensa'),
-        E('plank', 'Plancha frontal', 3, '30-45s', '2', 45, 'plank', 'Core', 'Glúteo apretado y cuerpo en línea recta.', 'Plancha con rodillas apoyadas'),
-        E('knee_raise', 'Elevaciones de rodillas', 3, '10-12', '2', 45, 'kneeraise', 'Core', 'Sube sin balancearte y controla la bajada.', 'Dead bug')
+        E('calf_standing', 'Gemelos de pie', 4, '10-15', '1-2', 60, 'calf', 'Gemelos', 'Pausa de 1 segundo abajo, en estiramiento completo.', 'Gemelos en prensa')
       ]},
       { id: 'TA', name: 'Torso A', focus: 'Fuerza en básicos', color: 'blue', exercises: [
         E('bench_press', 'Press banca', 4, '6-8', '2-3', 150, 'bench', 'Pectoral y tríceps', 'Escápulas juntas y abajo. La barra baja a la línea del pecho.', 'Press en máquina', { compound: true }),
@@ -119,7 +117,7 @@ export const routinePrograms: Record<string, Program> = {
     audience: 'Mujer',
     level: 'Intermedio (1 año o más entrenando)',
     daysPerWeek: '5',
-    description: 'Fuerza e hipertrofia para mantener y ganar músculo mientras pierdes grasa. Espalda y estabilidad escapular repartidas en tres días, glúteo en tres días y core corto tres veces por semana.',
+    description: 'Fuerza e hipertrofia para mantener y ganar músculo mientras pierdes grasa. Espalda y estabilidad escapular repartidas en tres días, glúteo en tres días.',
     intensity: 'RIR 1–2 en máquinas y ejercicios de aislamiento; RIR 2 en los básicos (sentadilla, hip thrust, peso muerto rumano, remos pesados).',
     progression: { minRirToProgress: 1, cautious: false, step: '1–2,5 kg en básicos y el mínimo disponible en accesorios' },
     safety: {
@@ -142,9 +140,7 @@ export const routinePrograms: Record<string, Program> = {
         E('rdl_db', 'Peso muerto rumano con mancuernas', 3, '8-12', '2', 120, 'rdl', 'Isquiotibiales y glúteo', 'Rodillas un poco flexionadas. Lleva la cadera atrás con la espalda neutra hasta sentir el estiramiento.', 'Peso muerto rumano en Smith', { compound: true, warn: 'Si lo notas en la zona lumbar en vez de en los isquios, reduce el recorrido y el peso.', weightStep: 1 }),
         E('leg_curl_lying', 'Curl femoral tumbado', 3, '10-15', '1-2', 90, 'legcurl', 'Isquiotibiales', 'Cadera pegada al banco. Sube controlado y baja en 3 segundos.', 'Curl femoral sentado'),
         E('kickback_cable', 'Patada de glúteo en polea', 3, '12-15', '1-2', 60, 'kickback', 'Glúteo mayor', 'Tronco un poco inclinado y abdomen firme. Lleva la pierna atrás sin arquear la zona lumbar.', 'Patada de glúteo en máquina', { perSide: true }),
-        E('abductor_machine', 'Abductores en máquina', 3, '15-20', '1-2', 60, 'abductor', 'Glúteo medio', 'Abre de forma controlada, pausa 1 s y vuelve lento.', 'Abducción con banda de pie'),
-        E('dead_bug', 'Dead bug', 3, '8-10', '2', 45, 'deadbug', 'Core (anti-extensión)', 'Zona lumbar en contacto con el suelo. Estira brazo y pierna contrarios sin que se despegue.', 'Dead bug solo con piernas', { perSide: true }),
-        E('plank', 'Plancha frontal', 3, '30-45s', '2', 45, 'plank', 'Core (anti-extensión)', 'Glúteo apretado, costillas abajo y cuerpo en línea.', 'Plancha con rodillas apoyadas')
+        E('abductor_machine', 'Abductores en máquina', 3, '15-20', '1-2', 60, 'abductor', 'Glúteo medio', 'Abre de forma controlada, pausa 1 s y vuelve lento.', 'Abducción con banda de pie')
       ]},
       { id: 'F2', name: 'Día 2', focus: 'Espalda y postura', color: 'blue', exercises: [
         E('lat_pulldown_neutral', 'Jalón al pecho agarre neutro', 4, '8-12', '2', 90, 'pullup', 'Dorsales', 'Pecho alto y lleva los codos hacia abajo y hacia las costillas, sin balancear el tronco.', 'Jalón en máquina o dominadas asistidas', { compound: true }),
@@ -160,8 +156,7 @@ export const routinePrograms: Record<string, Program> = {
         E('leg_press', 'Prensa', 3, '10-15', '2', 120, 'legpress', 'Cuádriceps y glúteo', 'La zona lumbar no se despega del respaldo. No bloquees las rodillas arriba.', 'Sentadilla hack', { compound: true }),
         E('reverse_lunge_db', 'Estocada trasera con mancuernas', 3, '10-12', '2', 90, 'walklunge', 'Cuádriceps y glúteo', 'Paso atrás largo y torso erguido. Empuja con el talón de la pierna delantera.', 'Estocada en Smith', { perSide: true, weightStep: 1 }),
         E('leg_ext', 'Sillón de cuádriceps', 3, '12-15', '1-2', 60, 'legext', 'Cuádriceps', 'Sube hasta estirar, pausa 1 s arriba y baja lento.', 'Extensión de rodilla con banda'),
-        E('adductor_machine', 'Aductores en máquina', 2, '12-15', '1-2', 60, 'abductor', 'Aductores', 'Cierra controlado, sin rebotar.', 'Aductor en polea'),
-        E('pallof', 'Pallof press', 3, '10-12', '2', 45, 'pallof', 'Core (anti-rotación)', 'De lado a la polea y con las manos en el pecho. Empuja al frente y resiste el giro 2 s.', 'Pallof con banda', { perSide: true })
+        E('adductor_machine', 'Aductores en máquina', 2, '12-15', '1-2', 60, 'abductor', 'Aductores', 'Cierra controlado, sin rebotar.', 'Aductor en polea')
       ]},
       { id: 'F4', name: 'Día 4', focus: 'Torso: empuje y espalda alta', color: 'green', exercises: [
         E('chest_press_machine', 'Press de pecho en máquina', 3, '8-12', '2', 90, 'chestpress', 'Pectoral y tríceps', 'Escápulas atrás y abajo todo el recorrido. Empuja sin despegar la espalda del respaldo.', 'Press inclinado con mancuernas', { compound: true }),
@@ -171,14 +166,13 @@ export const routinePrograms: Record<string, Program> = {
         E('reverse_fly', 'Pájaros en máquina', 3, '12-15', '1-2', 60, 'reversefly', 'Deltoide posterior y romboides', 'Brazos casi estirados. Abre hacia atrás juntando las escápulas.', 'Pájaros con mancuernas con pecho apoyado'),
         E('triceps_rope', 'Tríceps en polea con cuerda', 3, '10-15', '1-2', 60, 'pushdown', 'Tríceps', 'Codos pegados. Estira del todo abajo y separa la cuerda.', 'Extensión de tríceps con mancuerna')
       ]},
-      { id: 'F5', name: 'Día 5', focus: 'Glúteo, espalda y core', color: 'black', exercises: [
+      { id: 'F5', name: 'Día 5', focus: 'Glúteo y espalda', color: 'black', exercises: [
         E('bulgarian_split', 'Sentadilla búlgara', 3, '8-10', '2', 90, 'lunge', 'Glúteo y cuádriceps', 'Pie trasero en el banco. Inclina un poco el tronco adelante para trabajar más glúteo.', 'Estocada trasera en Smith', { perSide: true, compound: true }),
         E('hip_ext_45', 'Extensión de cadera a 45°', 3, '12-15', '2', 60, 'hipext45', 'Glúteo e isquios', 'Empuja con la cadera, no con la zona lumbar, y para al alinear el cuerpo. Sin pasar de esa línea.', 'Puente de glúteo a una pierna', { warn: 'Si notas molestia lumbar, cambia a la alternativa.' }),
         E('one_arm_row', 'Remo a un brazo con mancuerna', 3, '10-12', '2', 90, 'row', 'Dorsal', 'Mano y rodilla apoyadas en el banco, espalda plana. Lleva el codo hacia la cadera.', 'Remo unilateral en polea', { perSide: true, weightStep: 1 }),
         E('lat_pulldown_supine', 'Jalón al pecho agarre supino', 3, '10-12', '2', 90, 'pullup', 'Dorsales y bíceps', 'Palmas hacia ti. Lleva la barra a la parte alta del pecho con el pecho alto.', 'Jalón con agarre neutro'),
         E('kickback_machine', 'Patada de glúteo en máquina', 3, '12-15', '1-2', 60, 'kickback', 'Glúteo mayor', 'Abdomen firme. Extiende la cadera sin arquear la espalda.', 'Patada de glúteo en polea', { perSide: true }),
-        E('farmer_walk', 'Paseo del granjero', 3, '30-40s', '2', 60, 'farmer', 'Core, trapecio y agarre', 'Mancuernas pesadas a los lados, hombros atrás y abajo. Camina erguida.', 'Sostener las mancuernas de pie', { weightStep: 1 }),
-        E('side_plank', 'Plancha lateral', 3, '20-30s', '2', 45, 'sideplank', 'Oblicuos (estabilidad lateral)', 'Codo bajo el hombro, cadera alta y cuerpo en línea.', 'Plancha lateral con rodillas apoyadas', { perSide: true })
+        E('farmer_walk', 'Paseo del granjero', 3, '30-40s', '2', 60, 'farmer', 'Core, trapecio y agarre', 'Mancuernas pesadas a los lados, hombros atrás y abajo. Camina erguida.', 'Sostener las mancuernas de pie', { weightStep: 1 })
       ]}
     ]
   },
@@ -225,8 +219,7 @@ export const routinePrograms: Record<string, Program> = {
         E('leg_curl_seated', 'Curl femoral sentado', 3, '10-12', '2-3', 90, 'legcurl', 'Isquiotibiales', 'Espalda apoyada en el respaldo. Flexiona y vuelve lento en 3 segundos.', 'Curl femoral con banda, sentada', { weightStep: 1 }),
         E('lat_pulldown_neutral', 'Jalón al pecho agarre neutro', 3, '10-12', '2-3', 90, 'pullup', 'Dorsales', 'Sentada con los muslos sujetos. Lleva los codos hacia abajo sin echar el tronco atrás.', 'Jalón en máquina con apoyo de pecho', { compound: true, weightStep: 1 }),
         E('machine_row_supported', 'Remo en máquina con apoyo de pecho', 3, '10-12', '2-3', 90, 'cablerow', 'Espalda media y alta', 'El apoyo de pecho quita carga a la zona lumbar. Lleva los codos atrás y junta las escápulas.', 'Remo sentado en polea con espalda erguida', { weightStep: 1 }),
-        E('abductor_machine', 'Abductores en máquina', 2, '12-15', '2-3', 60, 'abductor', 'Glúteo medio', 'Espalda apoyada. Abre controlado en un rango cómodo para la cadera.', 'Abducción con banda, sentada', { weightStep: 1 }),
-        E('dead_bug', 'Dead bug suave', 2, '6-8', '3', 60, 'deadbug', 'Core (estabilidad)', 'Empieza moviendo solo los brazos o solo las piernas. La zona lumbar se mantiene quieta y sin dolor.', 'Respiración abdominal tumbada con rodillas flexionadas', { perSide: true, warn: 'Si aparece dolor lumbar, detente y consulta la alternativa con tu fisioterapeuta.', weightStep: 1 })
+        E('abductor_machine', 'Abductores en máquina', 2, '12-15', '2-3', 60, 'abductor', 'Glúteo medio', 'Espalda apoyada. Abre controlado en un rango cómodo para la cadera.', 'Abducción con banda, sentada', { weightStep: 1 })
       ]},
       { id: 'SB', name: 'Día B', focus: 'Glúteo y empuje', color: 'blue', exercises: [
         E('glute_bridge', 'Puente de glúteo', 3, '10-15', '3', 90, 'glutebridge', 'Glúteo mayor', 'Pies apoyados. Sube hasta alinear cadera y muslos apretando el glúteo, sin arquear la zona lumbar.', 'Hip thrust en máquina con carga ligera', { warn: 'Progresa de peso corporal a banda y después a un peso ligero sobre la cadera.', weightStep: 1 }),
@@ -234,8 +227,7 @@ export const routinePrograms: Record<string, Program> = {
         E('chest_press_machine', 'Press de pecho en máquina', 3, '10-12', '2-3', 90, 'chestpress', 'Pectoral y tríceps', 'Espalda apoyada en el respaldo. Empuja sin bloquear los codos.', 'Press con mancuernas en banco inclinado', { compound: true, weightStep: 1 }),
         E('lateral_raise_seated', 'Elevaciones laterales sentada', 2, '12-15', '2-3', 60, 'lateral', 'Deltoide lateral', 'Sentada con respaldo y mancuernas ligeras. Sube hasta un poco por debajo del hombro.', 'Elevación lateral en polea', { weightStep: 1 }),
         E('face_pull', 'Face pull con banda o polea', 2, '12-15', '2-3', 60, 'facepull', 'Deltoide posterior y trapecio medio', 'De pie y erguida. Tira hacia la cara separando las manos.', 'Remo alto con banda, sentada', { weightStep: 1 }),
-        E('triceps_rope', 'Tríceps en polea', 2, '12-15', '2', 60, 'pushdown', 'Tríceps', 'Codos pegados y tronco quieto.', 'Extensión de tríceps con banda', { weightStep: 1 }),
-        E('incline_plank', 'Plancha inclinada', 3, '20-30s', '3', 60, 'inclineplank', 'Core (anti-extensión)', 'Manos en un banco y cuerpo en línea. Cuanto más alta la superficie, más fácil.', 'Plancha contra la pared', { weightStep: 1 })
+        E('triceps_rope', 'Tríceps en polea', 2, '12-15', '2', 60, 'pushdown', 'Tríceps', 'Codos pegados y tronco quieto.', 'Extensión de tríceps con banda', { weightStep: 1 })
       ]},
       { id: 'SC', name: 'Día C', focus: 'Pierna y espalda', color: 'yellow', exercises: [
         E('leg_ext', 'Sillón de cuádriceps', 3, '10-15', '2-3', 90, 'legext', 'Cuádriceps', 'Sube controlado, pausa y baja lento, en un rango cómodo para la rodilla.', 'Extensión de rodilla con banda, sentada', { warn: 'Con artrosis de rodilla, trabaja solo en el recorrido que no genere dolor.', weightStep: 1 }),
@@ -243,8 +235,7 @@ export const routinePrograms: Record<string, Program> = {
         E('adductor_machine', 'Aductores en máquina', 2, '12-15', '2-3', 60, 'abductor', 'Aductores', 'Espalda apoyada. Cierra controlado.', 'Pelota apretada entre las rodillas, sentada', { weightStep: 1 }),
         E('cable_row', 'Remo sentado en polea', 3, '10-12', '2-3', 90, 'cablerow', 'Dorsales y romboides', 'Espalda erguida y fija; solo se mueven los brazos. Junta las escápulas al final.', 'Remo en máquina con apoyo de pecho', { compound: true, warn: 'No balancees el tronco adelante y atrás para mover el peso.', weightStep: 1 }),
         E('pec_deck', 'Aperturas en máquina', 2, '10-12', '2-3', 60, 'pecdeck', 'Pectoral', 'Espalda apoyada. Cierra delante del pecho sin forzar los hombros.', 'Aperturas con banda', { weightStep: 1 }),
-        E('curl_seated', 'Curl de bíceps sentada', 2, '10-12', '2', 60, 'curl', 'Bíceps', 'Espalda apoyada en el respaldo y codos quietos.', 'Curl en polea baja', { weightStep: 1 }),
-        E('pallof', 'Pallof press', 2, '8-10', '3', 60, 'pallof', 'Core (anti-rotación)', 'De lado a la polea. Empuja al frente y resiste el giro sin rotar la columna.', 'Pallof con banda, sentada', { perSide: true, weightStep: 1 })
+        E('curl_seated', 'Curl de bíceps sentada', 2, '10-12', '2', 60, 'curl', 'Bíceps', 'Espalda apoyada en el respaldo y codos quietos.', 'Curl en polea baja', { weightStep: 1 })
       ]}
     ]
   }
@@ -265,7 +256,17 @@ export function findExercise(program: Program, key: string): Exercise | null {
   return null;
 }
 
+/** Ejercicios que ya no están en ninguna rutina (abdominales). Se conservan para mostrar el historial. */
+const RETIRED_EXERCISES: Exercise[] = [
+  E('plank', 'Plancha frontal', 3, '30-45s', '2', 45, 'plank', 'Core', 'Glúteo apretado y cuerpo en línea recta.', 'Plancha con rodillas apoyadas'),
+  E('knee_raise', 'Elevaciones de rodillas', 3, '10-12', '2', 45, 'kneeraise', 'Core', 'Sube sin balancearte y controla la bajada.', 'Dead bug'),
+  E('dead_bug', 'Dead bug', 3, '8-10', '2', 45, 'deadbug', 'Core (anti-extensión)', 'Zona lumbar en contacto con el suelo. Estira brazo y pierna contrarios sin que se despegue.', 'Dead bug solo con piernas', { perSide: true }),
+  E('pallof', 'Pallof press', 3, '10-12', '2', 45, 'pallof', 'Core (anti-rotación)', 'De lado a la polea y con las manos en el pecho. Empuja al frente y resiste el giro 2 s.', 'Pallof con banda', { perSide: true }),
+  E('side_plank', 'Plancha lateral', 3, '20-30s', '2', 45, 'sideplank', 'Oblicuos (estabilidad lateral)', 'Codo bajo el hombro, cadera alta y cuerpo en línea.', 'Plancha lateral con rodillas apoyadas', { perSide: true }),
+  E('incline_plank', 'Plancha inclinada', 3, '20-30s', '3', 60, 'inclineplank', 'Core (anti-extensión)', 'Manos en un banco y cuerpo en línea. Cuanto más alta la superficie, más fácil.', 'Plancha contra la pared', { weightStep: 1 })
+];
+
 export function findExerciseAnywhere(key: string): Exercise | null {
   for (const p of programList()) { const e = findExercise(p, key); if (e) return e; }
-  return null;
+  return RETIRED_EXERCISES.find(e => e.key === key) || null;
 }

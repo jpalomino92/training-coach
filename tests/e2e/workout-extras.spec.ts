@@ -7,7 +7,7 @@ test('alternativa: máquina ocupada, series aparte y vuelta al ejercicio origina
   await card.getByRole('button', { name: /Máquina ocupada\? Hacer la alternativa: Sentadilla en Smith o hack/ }).click();
 
   const alt = page.getByRole('article', { name: 'Sentadilla en Smith o hack' });
-  await expect(alt).toContainText('Ejercicio 1 de 7 · alternativa');
+  await expect(alt).toContainText('Ejercicio 1 de 5 · alternativa');
   await expect(alt).toContainText('Estás haciendo la alternativa de Sentadilla con barra');
   // Se puede volver antes de registrar
   await alt.getByRole('button', { name: 'Volver a Sentadilla con barra' }).click();
@@ -33,7 +33,7 @@ test('resumen al terminar: duración, series, volumen y comparación con la sesi
   await createUser(page, 'resumen@correo.com', 'Rosa', ROUTINE.safe, { ack: true });
   await completeWholeDay(page, { weight: '20', reps: '10', rir: '3' });
   const summary = page.getByRole('region', { name: /Entrenamiento completado el 14\/09\/2026/ });
-  await expect(summary).toContainText('Series16 de 16');
+  await expect(summary).toContainText('Series14 de 14');
   await expect(summary).toContainText(/Volumen\d/);
 
   await page.clock.setFixedTime(new Date('2026-09-21T10:30:00'));
@@ -43,7 +43,7 @@ test('resumen al terminar: duración, series, volumen y comparación con la sesi
   await skipRest(page);
   await completeWholeDay(page);
   const again = page.getByRole('region', { name: /Entrenamiento completado el 21\/09\/2026/ });
-  await expect(again).toContainText('La sesión anterior de este día (14/09/2026): 16 series y 3200 kg');
+  await expect(again).toContainText('La sesión anterior de este día (14/09/2026): 14 series y 2800 kg');
   await expect(again).toContainText(/volumen \+\d+ %/);
   await expect(again).toContainText('Récord: Prensa de piernas');
 });

@@ -73,7 +73,7 @@ describe('resumen del entrenamiento', () => {
     const s = workoutSummary(d, d.workouts[1]);
     expect(s.minutes).toBe(65);
     expect(s.sets).toBe(4);
-    expect(s.total).toBe(23);
+    expect(s.total).toBe(17);
     expect(s.volume).toBe(85 * 8 + 80 * 8 + 100 * 10); // la plancha (tiempo) no cuenta
     expect(s.previous).toMatchObject({ volume: 1280, sets: 2 });
     expect(s.records).toEqual([{ name: 'Sentadilla con barra' }]);

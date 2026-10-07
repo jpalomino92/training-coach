@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { suggest, summarize } from '../../src/domain/progression';
-import { routinePrograms, findExercise } from '../../src/domain/routines';
+import { routinePrograms, findExercise, findExerciseAnywhere } from '../../src/domain/routines';
 import { cautiousProg, ex, normalProg, sets } from './helpers';
 
 describe('doble progresión', () => {
@@ -107,7 +107,7 @@ describe('doble progresión', () => {
   });
 
   it('ejercicios por tiempo no hablan de kilos', () => {
-    const plank = findExercise(routinePrograms.maleUpperLower, 'plank')!;
+    const plank = findExerciseAnywhere('plank')!; // ya no está en ninguna rutina, pero puede haber historial
     const s = suggest(plank, sets(null, [45, 45, 45], 2), routinePrograms.maleUpperLower);
     expect(s.level).toBe('up');
     expect(s.action).not.toContain('kg');

@@ -101,6 +101,6 @@ describe('componentes', () => {
     expect(within(card).getByRole('form', { name: 'Serie 2 de 4' })).toBeInTheDocument();
     // La siguiente serie llega rellenada con la anterior de hoy
     expect(within(card).getByLabelText('Peso kg')).toHaveValue('80');
-    expect(screen.getByText(/En progreso · 1 de 23 series/)).toBeInTheDocument();
+    expect(screen.getByText(/En progreso · 1 de 17 series/)).toBeInTheDocument();
   });
 });

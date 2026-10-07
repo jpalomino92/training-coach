@@ -21,7 +21,7 @@ async function seedLucia(page: Page) {
     d.profile.start_date = '2026-08-04';
     d.profile.age = 34; d.profile.sex = 'Mujer'; d.profile.goal = 'Perder grasa'; d.profile.level = 'Intermedio';
     const plan: Record<string, [string, number, number][]> = {
-      F1: [['hip_thrust', 4, 40], ['rdl_db', 3, 14], ['leg_curl_lying', 3, 25], ['kickback_cable', 3, 10], ['abductor_machine', 3, 35], ['dead_bug', 3, 0], ['plank', 3, 0]],
+      F1: [['hip_thrust', 4, 40], ['rdl_db', 3, 14], ['leg_curl_lying', 3, 25], ['kickback_cable', 3, 10], ['abductor_machine', 3, 35]],
       F2: [['lat_pulldown_neutral', 4, 32.5], ['cable_row', 4, 35], ['chest_supported_row', 3, 12], ['pullover_cable', 3, 15], ['face_pull', 3, 10], ['y_raise', 3, 2], ['curl_db', 3, 6]]
     };
     let n = 0;
@@ -108,7 +108,7 @@ for (const [label, width, height] of WIDTHS) for (const theme of THEMES) {
     await signUp(page, 'lucia@correo.com');
     await onboard(page, 'Lucía', ROUTINE.female);
     await seedLucia(page);
-    await expect(page.getByText('En progreso · 2 de 23 series')).toBeVisible();
+    await expect(page.getByText('En progreso · 2 de 17 series')).toBeVisible();
     await shot('hoy-en-progreso');
     await scrollTo(page.locator('.set-edit'));
     await shot('hoy-serie-rellenada');
