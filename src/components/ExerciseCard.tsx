@@ -24,6 +24,8 @@ export interface AlternativeToggle {
   locked: boolean;
   baseName: string;
   altName: string;
+  /** Viene de la última sesión, que se hizo con la alternativa. */
+  carried?: boolean;
   onToggle(): void;
 }
 
@@ -122,8 +124,10 @@ export function ExerciseCard(p: ExerciseCardProps) {
         <div className={`alt-switch${p.alternative.active ? ' on' : ''}`}>
           {p.alternative.active ? (
             <>
-              <span>Estás haciendo la alternativa de <b>{p.alternative.baseName}</b>. Sus pesos se guardan aparte.</span>
-              {!p.alternative.locked && <button type="button" className="btn btn-link" onClick={p.alternative.onToggle}>Volver a {p.alternative.baseName}</button>}
+              {p.alternative.carried
+                ? <span>La última vez hiciste la alternativa de <b>{p.alternative.baseName}</b>, así que hoy sigue siendo la principal. Sus pesos se guardan aparte.</span>
+                : <span>Estás haciendo la alternativa de <b>{p.alternative.baseName}</b>. Sus pesos se guardan aparte.</span>}
+              {!p.alternative.locked && <button type="button" className="btn btn-link" onClick={p.alternative.onToggle}>{p.alternative.carried ? 'Cambiar a' : 'Volver a'} {p.alternative.baseName}</button>}
             </>
           ) : (
             <button type="button" className="btn btn-link" onClick={p.alternative.onToggle}>

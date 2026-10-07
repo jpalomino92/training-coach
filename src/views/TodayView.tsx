@@ -15,7 +15,7 @@ import { restFor } from '../domain/prefs';
 import type { Exercise, Feel, Program } from '../domain/types';
 import { streak, weeklyCounts, weeklyGoal } from '../domain/consistency';
 import { altExercise, altKey, baseKey } from '../domain/alternatives';
-import { activeWorkout, dayStatus, isExerciseDone, lastSessionFor, programWorkouts, totalSets, usesAlternative } from '../domain/workout';
+import { activeWorkout, dayStatus, isExerciseDone, lastSessionFor, lastUsedAlternative, programWorkouts, totalSets, usesAlternative } from '../domain/workout';
 import { useApp, useDay } from '../state/AppContext';
 import { useTimer, vibrate } from '../state/TimerContext';
 
@@ -55,7 +55,7 @@ export function TodayView() {
   const { day, workout, sets } = useDay();
   const timer = useTimer();
   const [openKey, setOpenKey] = useState<Record<string, string>>({});
-  /** Alternativa elegida antes de registrar la primera serie: `${día}:${ejercicio}` */
+  /** Alternativa elegida antes de registrar la primera serie: `${día}:${ejercicio}`. Sin elegir, se repite la modalidad de la última vez. */
   const [altChoice, setAltChoice] = useState<Record<string, boolean>>({});
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -66,12 +66,13 @@ export function TodayView() {
   const total = totalSets(day);
   const doneCount = sets.length;
   const status = dayStatus(workout);
+  const carriedAlt = (ex: Exercise) => !!ex.alt && lastUsedAlternative(data, program, ex, workout?.id);
   const exSets = (ex: Exercise) => sets.filter(s => s.exercise_key === ex.key).sort((a, b) => a.set_index - b.set_index);
   /** El ejercicio que se hace hoy: el de la rutina o su alternativa. */
   const variantOf = (ex: Exercise): Exercise => {
     if (usesAlternative(sets, ex)) return altExercise(ex);
     if (sets.some(s => s.exercise_key === ex.key)) return ex;
-    return altChoice[`${day.id}:${ex.key}`] ? altExercise(ex) : ex;
+    return (altChoice[`${day.id}:${ex.key}`] ?? carriedAlt(ex)) ? altExercise(ex) : ex;
   };
   const firstOpen = day.exercises.find(e => !isExerciseDone(sets, e));
   const activeKey = openKey[day.id] && day.exercises.some(e => e.key === openKey[day.id]) ? openKey[day.id] : firstOpen?.key ?? null;
@@ -160,6 +161,7 @@ export function TodayView() {
         key={ex.key} ex={ex} anchor={base.key} rest={restFor(ex, prefs)} barKg={prefs.bar_kg} number={day.exercises.indexOf(base) + 1} total={day.exercises.length} program={program}
         alternative={base.alt ? {
           active: ex.key !== base.key, locked, baseName: base.name, altName: base.alt,
+          carried: ex.key !== base.key && !locked && altChoice[`${day.id}:${base.key}`] == null && carriedAlt(base),
           onToggle: () => setAltChoice(m => ({ ...m, [`${day.id}:${base.key}`]: ex.key === base.key }))
         } : undefined}
         sets={exSets(ex)} history={historyOf(ex.key)} last={last} lastFeel={last?.workout.feel?.[ex.key]} feel={workout?.feel?.[ex.key]}

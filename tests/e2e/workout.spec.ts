@@ -100,8 +100,8 @@ test('dolor: se distingue de la molestia muscular y la sesión siguiente muestra
   await page.getByRole('button', { name: 'Terminar entrenamiento' }).click();
   await page.getByRole('button', { name: 'Terminar', exact: true }).click();
 
-  // Dos días después, mismo día de la rutina
-  await page.clock.setFixedTime(new Date('2026-09-23T10:00:00'));
+  // La semana siguiente, mismo día de la rutina
+  await page.clock.setFixedTime(new Date('2026-09-28T10:00:00'));
   await page.reload();
   await page.getByRole('button', { name: /^F1,/ }).click();
   const next = page.getByRole('article', { name: 'Hip thrust con barra' });
@@ -125,7 +125,7 @@ test('molestia muscular normal no bloquea la sugerencia de subir', async ({ page
   await page.getByRole('article', { name: 'Hip thrust con barra' }).getByRole('button', { name: 'Molestia muscular' }).click();
   await page.getByRole('button', { name: 'Terminar entrenamiento' }).click();
   await page.getByRole('button', { name: 'Terminar', exact: true }).click();
-  await page.clock.setFixedTime(new Date('2026-09-24T10:00:00'));
+  await page.clock.setFixedTime(new Date('2026-09-28T10:00:00'));
   await page.reload();
   await page.getByRole('button', { name: /^F1,/ }).click();
   const card = page.getByRole('article', { name: 'Hip thrust con barra' });

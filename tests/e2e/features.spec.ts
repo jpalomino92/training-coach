@@ -84,7 +84,7 @@ test('exportar CSV descarga el historial', async ({ page }) => {
 });
 
 test('récord personal al superar la mejor marca y constancia semanal', async ({ page }) => {
-  await page.clock.setFixedTime(new Date('2026-09-21T10:00:00'));
+  await page.clock.setFixedTime(new Date('2026-09-14T10:00:00'));
   await createUser(page, 'record@correo.com', 'Rita', ROUTINE.male);
   await expect(page.getByText('Esta semana: 0 de 4')).toBeVisible();
   await completeSet(page, { weight: '80', reps: '8', rir: '2' });
@@ -94,8 +94,10 @@ test('récord personal al superar la mejor marca y constancia semanal', async ({
   await page.getByRole('button', { name: 'Terminar', exact: true }).click();
   await expect(page.getByText('Esta semana: 1 de 4')).toBeVisible();
 
+  // La semana siguiente, mismo día de la rutina
   await page.clock.setFixedTime(new Date('2026-09-23T10:00:00'));
   await page.reload();
+  await expect(page.getByText('Esta semana: 0 de 4')).toBeVisible();
   await page.getByRole('button', { name: /^PA,/ }).click();
   await completeSet(page, { weight: '82,5', reps: '8', rir: '2' });
   await expect(page.getByRole('article', { name: 'Sentadilla con barra' }).getByRole('status')).toContainText('Nuevo récord de peso: 82,5 kg');
@@ -110,7 +112,8 @@ test('récord personal al superar la mejor marca y constancia semanal', async ({
   await tab(page, 'Progreso');
   const cons = page.getByRole('region', { name: 'Constancia' });
   await expect(cons).toContainText('Objetivo: 4 por semana');
-  await expect(cons.getByRole('listitem', { name: /Semana del 21\/09: 2 de 4/ })).toBeVisible();
+  await expect(cons.getByRole('listitem', { name: /Semana del 21\/09: 1 de 4/ })).toBeVisible();
+  await expect(cons.getByRole('listitem', { name: /Semana del 14\/09: 1 de 4/ })).toBeVisible();
 });
 
 test('cambiar la contraseña desde Perfil', async ({ page }) => {

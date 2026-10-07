@@ -1,5 +1,6 @@
 /* Selectores puros sobre los datos del usuario. No dependen de React. */
 import { altExercise, altKey } from './alternatives';
+import { weekStart } from './consistency';
 import { DAY_MS, sameDay, toDate } from './format';
 import { findExercise } from './routines';
 import { summarize } from './progression';
@@ -10,11 +11,12 @@ export const setsOf = (data: UserData, workoutId: string) => data.sets.filter(s 
 export const programWorkouts = (data: UserData, program: Program) => data.workouts.filter(w => w.program_id === program.id);
 export const totalSets = (day: WorkoutDay) => day.exercises.reduce((n, e) => n + e.sets, 0);
 
-/** Entrenamiento de hoy para ese día: el que está en curso o el completado hoy. */
+/** Entrenamiento de esta semana para ese día: el que está en curso o el completado esta semana (lunes a domingo). */
 export function activeWorkout(data: UserData, program: Program, dayId: string, now = Date.now()): Workout | null {
   const list = programWorkouts(data, program).filter(w => w.day_id === dayId).sort(byStartDesc);
+  const monday = +weekStart(now);
   return list.find(w => w.status === 'in_progress')
-    || list.find(w => w.status === 'completed' && !!w.completed_at && sameDay(w.completed_at, now))
+    || list.find(w => w.status === 'completed' && !!w.completed_at && +new Date(w.completed_at) >= monday)
     || null;
 }
 
@@ -51,6 +53,21 @@ export function isExerciseDone(sets: WorkoutSet[], ex: Exercise): boolean {
   const keys = [ex.key, altKey(ex.key)];
   for (let i = 0; i < ex.sets; i++) if (!sets.some(s => keys.includes(s.exercise_key) && s.set_index === i)) return false;
   return true;
+}
+
+/**
+ * La última vez que se hizo este ejercicio (en otro entrenamiento) fue con la alternativa.
+ * Así la semana siguiente arranca con esa modalidad y la persona decide si vuelve al original.
+ */
+export function lastUsedAlternative(data: UserData, program: Program, ex: Exercise, excludeWorkoutId?: string | null): boolean {
+  const alt = altKey(ex.key);
+  const list = programWorkouts(data, program).filter(w => w.id !== excludeWorkoutId).sort(byStartDesc);
+  for (const w of list) {
+    const ss = setsOf(data, w.id);
+    if (ss.some(s => s.exercise_key === alt)) return true;
+    if (ss.some(s => s.exercise_key === ex.key)) return false;
+  }
+  return false;
 }
 
 /** Hoy se hace la alternativa si ya hay alguna serie suya registrada. */

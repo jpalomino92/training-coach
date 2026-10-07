@@ -92,6 +92,8 @@ export interface Prefs {
   bar_kg: number;
   /** Fecha en que se aceptó el aviso de salud de cada rutina asignada: { programId: iso } */
   acks?: Record<string, string>;
+  /** Semana tipo elegida por la persona para cada rutina: { programId: weekPlan }. Sin valor, la de la rutina. */
+  week_plans?: Record<string, [string, string | null][]>;
 }
 
 /* ---------- Registros (todos llevan user_id) ---------- */

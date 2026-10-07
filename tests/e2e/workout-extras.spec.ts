@@ -136,3 +136,50 @@ test('calendario mensual en el historial', async ({ page }) => {
   await cal.getByRole('button', { name: 'Mes anterior' }).click();
   await expect(page.getByRole('region', { name: 'Calendario: Agosto 2026' })).toContainText('0 entrenamientos');
 });
+
+test('semana: el día completado se sigue viendo hasta el domingo y la alternativa pasa a la semana siguiente', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-09-14T10:00:00')); // lunes
+  await createUser(page, 'semana@correo.com', 'Sara', ROUTINE.male);
+  await page.getByRole('article', { name: 'Sentadilla con barra' }).getByRole('button', { name: /Hacer la alternativa/ }).click();
+  await completeSet(page, { weight: '60', reps: '8', rir: '2' });
+  await skipRest(page);
+  await page.getByRole('button', { name: 'Terminar entrenamiento' }).click();
+  await page.getByRole('button', { name: 'Terminar', exact: true }).click();
+
+  // Al día siguiente, el día sigue marcado como completado
+  await page.clock.setFixedTime(new Date('2026-09-15T10:00:00'));
+  await page.reload();
+  await page.getByRole('button', { name: /^PA,/ }).click();
+  await expect(page.locator('.dayhead .status.done')).toContainText('Completado el 14/09/2026');
+
+  // La semana siguiente arranca con la alternativa, y se puede cambiar al original
+  await page.clock.setFixedTime(new Date('2026-09-21T10:00:00'));
+  await page.reload();
+  await page.getByRole('button', { name: /^PA,/ }).click();
+  await expect(page.getByText('No iniciado')).toBeVisible();
+  const alt = page.getByRole('article', { name: 'Sentadilla en Smith o hack' });
+  await expect(alt).toContainText('La última vez hiciste la alternativa de Sentadilla con barra');
+  await alt.getByRole('button', { name: 'Cambiar a Sentadilla con barra' }).click();
+  await expect(page.getByRole('article', { name: 'Sentadilla con barra' })).toBeVisible();
+});
+
+test('rutina: cambiar qué día de la semana toca cada entrenamiento', async ({ page }) => {
+  await createUser(page, 'dias@correo.com', 'Diego', ROUTINE.male);
+  await tab(page, 'Rutina');
+  const week = page.getByRole('list', { name: 'Semana tipo' });
+  await expect(week.getByRole('listitem', { name: /^X: descanso/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Cambiar días' }).click();
+  await page.getByLabel('Martes').selectOption('');
+  await page.getByLabel('Miércoles').selectOption('TA');
+  await page.getByRole('button', { name: 'Guardar' }).click();
+  await expect(week.getByRole('listitem', { name: /^X: TA/ })).toBeVisible();
+  await expect(week.getByRole('listitem', { name: /^M: descanso/ })).toBeVisible();
+
+  // Se conserva al recargar y se puede volver a la de la rutina
+  await page.reload();
+  await tab(page, 'Rutina');
+  await expect(week.getByRole('listitem', { name: /^X: TA/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Cambiar días' }).click();
+  await page.getByRole('button', { name: 'Volver a la semana de la rutina' }).click();
+  await expect(week.getByRole('listitem', { name: /^M: TA/ })).toBeVisible();
+});

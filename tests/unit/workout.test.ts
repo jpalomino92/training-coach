@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { routinePrograms } from '../../src/domain/routines';
 import type { UserData, Workout, WorkoutSet } from '../../src/domain/types';
-import { activeWorkout, defaultDayId, exerciseProgress, isDayDone, lastSessionFor, prefillFor } from '../../src/domain/workout';
+import { activeWorkout, defaultDayId, exerciseProgress, isDayDone, lastSessionFor, lastUsedAlternative, prefillFor } from '../../src/domain/workout';
 
 const P = routinePrograms.maleUpperLower;
 const day = (iso: string) => new Date(iso).getTime();
@@ -25,10 +25,22 @@ describe('selectores de entrenamiento', () => {
     expect(defaultDayId(d, P, day('2026-09-22T09:00:00'))).toBe('TB');
   });
 
-  it('entrenamiento activo: en curso o completado hoy', () => {
-    const d = data([w('1', 'PA', 'completed', '2026-09-18T10:00:00', '2026-09-18T11:00:00')]);
-    expect(activeWorkout(d, P, 'PA', day('2026-09-18T20:00:00'))?.id).toBe('1');
-    expect(activeWorkout(d, P, 'PA', day('2026-09-19T08:00:00'))).toBeNull();
+  it('entrenamiento activo: en curso o completado esta semana', () => {
+    const d = data([w('1', 'PA', 'completed', '2026-09-15T10:00:00', '2026-09-15T11:00:00')]); // martes
+    expect(activeWorkout(d, P, 'PA', day('2026-09-15T20:00:00'))?.id).toBe('1');
+    expect(activeWorkout(d, P, 'PA', day('2026-09-20T22:00:00'))?.id).toBe('1'); // domingo
+    expect(activeWorkout(d, P, 'PA', day('2026-09-21T08:00:00'))).toBeNull(); // lunes siguiente
+  });
+
+  it('alternativa: se repite la modalidad de la última sesión del ejercicio', () => {
+    const ex = P.days[0].exercises.find(e => e.alt)!;
+    const d = data(
+      [w('a', 'PA', 'completed', '2026-09-08T10:00:00', '2026-09-08T11:00:00'), w('b', 'PA', 'completed', '2026-09-15T10:00:00', '2026-09-15T11:00:00'), w('c', 'PA', 'in_progress', '2026-09-22T10:00:00')],
+      [s('a', ex.key, 0, 50, 8), s('b', ex.key + '__alt', 0, 40, 10)]
+    );
+    expect(lastUsedAlternative(d, P, ex, 'c')).toBe(true);
+    expect(lastUsedAlternative(d, P, ex, 'b')).toBe(false);
+    expect(lastUsedAlternative(data([]), P, ex)).toBe(false);
   });
 
   it('última sesión excluye el entrenamiento de hoy', () => {

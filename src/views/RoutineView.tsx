@@ -6,11 +6,13 @@ import { ExerciseIllustration } from '../components/ExerciseIllustration';
 import { HealthNoticeFull } from '../components/HealthNotice';
 import { Icon, type IconName } from '../components/Icon';
 import { restText, targetText } from '../domain/format';
+import { weekPlanFor } from '../domain/prefs';
 import { PAIN_GUIDE } from '../domain/routines';
 import { totalSets } from '../domain/workout';
 import { useApp } from '../state/AppContext';
 
 const WEEKDAY_INDEX = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+const WEEKDAY_NAME: Record<string, string> = { L: 'Lunes', M: 'Martes', X: 'Miércoles', J: 'Jueves', V: 'Viernes', S: 'Sábado', D: 'Domingo' };
 
 function Info({ icon, title, children, defaultOpen }: { icon: IconName; title: string; children: ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(!!defaultOpen);
@@ -28,8 +30,23 @@ function Info({ icon, title, children, defaultOpen }: { icon: IconName; title: s
 }
 
 export function RoutineView() {
-  const { program, setDayId, setTab, dayId } = useApp();
+  const { program, setDayId, setTab, dayId, prefs, updateSettings, showToast } = useApp();
   const [openDay, setOpenDay] = useState<string | null>(dayId);
+  const plan = weekPlanFor(program, prefs);
+  const ownPlan = plan !== program.weekPlan;
+  /** Semana tipo en edición (null: no se está editando). */
+  const [draft, setDraft] = useState<[string, string | null][] | null>(null);
+  const [saving, setSaving] = useState(false);
+  const savePlan = async (next: [string, string | null][] | null) => {
+    setSaving(true);
+    try {
+      const rest = { ...(prefs.week_plans || {}) };
+      if (next) rest[program.id] = next; else delete rest[program.id];
+      await updateSettings({ week_plans: rest });
+      setDraft(null);
+      showToast(next ? 'Días de entrenamiento guardados.' : 'Vuelves a la semana de la rutina.');
+    } catch (e) { showToast(e instanceof Error ? e.message : 'No se pudo guardar.'); } finally { setSaving(false); }
+  };
   const todayLetter = WEEKDAY_INDEX[new Date().getDay()];
   const dayOf = (id: string | null) => (id ? program.days.find(d => d.id === id) : undefined);
 
@@ -47,7 +64,7 @@ export function RoutineView() {
 
       <h2 className="sec eyebrow">Semana tipo</h2>
       <ul className="week" aria-label="Semana tipo">
-        {program.weekPlan.map(([letter, id]) => {
+        {plan.map(([letter, id]) => {
           const d = dayOf(id);
           return (
             <li key={letter} className={letter === todayLetter ? 'today' : ''} aria-label={`${letter}: ${d ? `${d.id}, ${d.name}` : 'descanso o cardio suave'}${letter === todayLetter ? ' (hoy)' : ''}`}>
@@ -57,7 +74,30 @@ export function RoutineView() {
           );
         })}
       </ul>
-      <p className="hint">Los días sin pesas son para cardio suave o descanso.</p>
+      <p className="hint">Los días sin pesas son para cardio suave o descanso.{ownPlan && ' Has cambiado los días de la rutina.'}</p>
+      {!draft ? (
+        <Button variant="secondary" block icon="calendar" onClick={() => setDraft(plan.map(([l, id]) => [l, id]))}>Cambiar días</Button>
+      ) : (
+        <section className="card card-pad stack" aria-label="Cambiar días de entrenamiento">
+          <p className="hint">Elige qué día de la semana haces cada entrenamiento.</p>
+          <div className="week-ed">
+            {draft.map(([l, id], idx) => (
+              <label key={l} className="week-ed-row">
+                <span>{WEEKDAY_NAME[l] || l}</span>
+                <select className="inp" value={id || ''} onChange={e => { const v = e.target.value || null; setDraft(draft.map((x, k) => (k === idx ? [x[0], v] : x))); }}>
+                  <option value="">Descanso</option>
+                  {program.days.map(d => <option key={d.id} value={d.id}>{d.id} · {d.name}</option>)}
+                </select>
+              </label>
+            ))}
+          </div>
+          <div className="btn-row">
+            <Button variant="secondary" onClick={() => setDraft(null)}>Cancelar</Button>
+            <Button variant="primary" onClick={() => savePlan(draft)} loading={saving}>Guardar</Button>
+          </div>
+          {ownPlan && <Button variant="link" block onClick={() => savePlan(null)}>Volver a la semana de la rutina</Button>}
+        </section>
+      )}
 
       <h2 className="sec eyebrow">Días</h2>
       {program.days.map(d => {
