@@ -20,7 +20,7 @@ test('registrar, editar y borrar series', async ({ page }) => {
 
   await completeSet(page, { reps: '8' });
   await expect(card.getByRole('status')).toContainText('Serie registrada');
-  await expect(page.getByText('En progreso · 1 de 17 series')).toBeVisible();
+  await expect(page.getByText('En progreso · 1 de 23 series')).toBeVisible();
   await skipRest(page);
 
   // La serie 2 llega rellenada con la anterior de hoy
@@ -39,7 +39,7 @@ test('registrar, editar y borrar series', async ({ page }) => {
   // Borrar la serie 2
   await card.getByRole('button', { name: 'Editar serie 2' }).click();
   await page.getByRole('form', { name: 'Editar serie 2' }).getByRole('button', { name: 'Eliminar serie' }).click();
-  await expect(page.getByText('En progreso · 1 de 17 series')).toBeVisible();
+  await expect(page.getByText('En progreso · 1 de 23 series')).toBeVisible();
 
   // Todo sigue ahí al recargar
   await page.reload();
@@ -61,14 +61,14 @@ test('finalización manual con series pendientes pide confirmación', async ({ p
   await completeSet(page, { weight: '60', reps: '8', rir: '2' });
   await skipRest(page);
   await page.getByRole('button', { name: 'Terminar entrenamiento' }).click();
-  await expect(page.getByText('Quedan 16 series sin registrar.')).toBeVisible();
+  await expect(page.getByText('Quedan 22 series sin registrar.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Cancelar' })).toBeFocused();
   await page.getByRole('button', { name: 'Cancelar' }).click();
   await page.getByRole('button', { name: 'Terminar entrenamiento' }).click();
   await page.getByRole('button', { name: 'Terminar', exact: true }).click();
   await expect(page.getByText(/^Entrenamiento completado el/)).toBeVisible();
   await tab(page, 'Historial');
-  await expect(page.getByText('◐ Terminado con 1 de 17 series')).toBeVisible();
+  await expect(page.getByText('◐ Terminado con 1 de 23 series')).toBeVisible();
 });
 
 test('notas por ejercicio: se guardan solas y se ven la próxima vez', async ({ page }) => {

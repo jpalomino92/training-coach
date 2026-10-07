@@ -1,7 +1,8 @@
 /* El contenido de las rutinas debe coincidir literalmente con el prototipo.
    Solo se permiten el campo nuevo weightStep, el
    renombrado requireAck → requiresHealthNotice, tres poses nuevas y
-   la retirada de los ejercicios de abdominales. */
+   la retirada de los ejercicios de abdominales y el trabajo de agarre
+   añadido a la rutina de hombre. */
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import vm from 'node:vm';
@@ -21,7 +22,9 @@ function loadLegacy(): any {
 const NEW_POSES: Record<string, string> = { pullover_cable: 'pullover', incline_plank: 'inclineplank', pec_deck: 'pecdeck' };
 /** Abdominales retirados de todas las rutinas. */
 const REMOVED_ABS = ['plank', 'knee_raise', 'dead_bug', 'pallof', 'side_plank', 'incline_plank'];
-const DUMBBELL = ['rdl_db', 'shoulder_press_db', 'incline_db', 'lateral_raise', 'curl_db', 'hammer_curl', 'one_arm_row', 'reverse_lunge_db', 'farmer_walk'];
+/** Agarre añadido a la rutina de hombre. */
+const GRIP = ['db_hold', 'plate_pinch', 'dead_hang'];
+const DUMBBELL = ['rdl_db', 'shoulder_press_db', 'incline_db', 'lateral_raise', 'curl_db', 'hammer_curl', 'one_arm_row', 'reverse_lunge_db', 'farmer_walk', 'db_hold'];
 
 describe('rutinas', () => {
   const legacy = loadLegacy();
@@ -45,6 +48,7 @@ describe('rutinas', () => {
         old.description = old.description.replace(' y core corto tres veces por semana.', '.');
         old.days.find((d: { id: string }) => d.id === 'F5').focus = 'Glúteo y espalda';
       }
+      for (const d of cur.days) d.exercises = d.exercises.filter((e: { key: string }) => !GRIP.includes(e.key));
       for (const d of cur.days) for (const e of d.exercises) {
         delete e.weightStep;
         if (NEW_POSES[e.key]) e.pose = 'OLD';
@@ -91,5 +95,19 @@ describe('sin abdominales', () => {
       expect(['plank', 'knee_raise', 'dead_bug', 'pallof', 'side_plank', 'incline_plank']).not.toContain(e.key);
     }
     expect(findExerciseAnywhere('plank')?.name).toBe('Plancha frontal');
+  });
+});
+
+describe('agarre (rutina de hombre)', () => {
+  const P = routinePrograms.maleUpperLower;
+  const keysOf = (id: string) => P.days.find(d => d.id === id)!.exercises.map(e => e.key);
+  it('al final de Pierna A y de Torso B, lejos del peso muerto', () => {
+    expect(keysOf('PA').slice(-2)).toEqual(['db_hold', 'plate_pinch']);
+    expect(keysOf('TB').slice(-1)).toEqual(['dead_hang']);
+    expect(keysOf('PC')).not.toContain('dead_hang');
+  });
+  it('sostener mancuernas: 20-40 s y el paseo del granjero como alternativa', () => {
+    const e = P.days.find(d => d.id === 'PA')!.exercises.find(x => x.key === 'db_hold')!;
+    expect(e).toMatchObject({ unit: 's', reps: { min: 20, max: 40 }, alt: 'Paseo del granjero' });
   });
 });

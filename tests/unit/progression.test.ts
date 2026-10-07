@@ -106,6 +106,16 @@ describe('doble progresión', () => {
     expect(suggest(bench, sets(60, [8, 8, 8, 8], 2), routinePrograms.maleUpperLower).action).toBe('Sube a 62,5 kg.');
   });
 
+  it('ejercicios por tiempo con peso: al llegar al máximo de segundos, sube el peso aunque se fuera al fallo', () => {
+    const hold = findExercise(routinePrograms.maleUpperLower, 'db_hold')!;
+    const up = suggest(hold, sets(30, [40, 40, 40], 0), routinePrograms.maleUpperLower);
+    expect(up.action).toBe('Sube a 31 kg.');
+    expect(up.reason).toBe('La última vez hiciste 40 / 40 / 40 s con RIR 0.');
+    const keep = suggest(hold, sets(30, [40, 35, 30], 0), routinePrograms.maleUpperLower);
+    expect(keep.action).toBe('Mantén 30 kg.');
+    expect(keep.reason).toContain('40 segundos');
+  });
+
   it('ejercicios por tiempo no hablan de kilos', () => {
     const plank = findExerciseAnywhere('plank')!; // ya no está en ninguna rutina, pero puede haber historial
     const s = suggest(plank, sets(null, [45, 45, 45], 2), routinePrograms.maleUpperLower);

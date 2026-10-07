@@ -81,16 +81,19 @@ export function suggest(ex: Exercise, sets: SetLike[] | null | undefined, progra
 
   const sum = summarize(sets)!;
   const step = ex.weightStep;
-  const noLoad = ex.unit === 's' || sum.topWeight <= 0;
+  // Los ejercicios por tiempo con peso (sostener mancuernas, pinza con discos) progresan en kilos
+  const noLoad = sum.topWeight <= 0;
   const top = sum.topWeight;
   const up = round2(top + step);
   const down = Math.max(0, round2(top - step));
   const repsText = sum.reps.join(' / ');
+  const lastText = `${repsText}${ex.unit === 's' ? ' s' : ''}${sum.minRir !== null ? ` con RIR ${fmtNum(sum.minRir)}` : ''}`;
   const rirKnown = sum.minRir !== null;
   const allTop = sets.length >= ex.sets && sets.every(x => Number(x.reps) >= ex.reps.max);
   const anyLow = sets.some(x => Number(x.reps) < ex.reps.min);
   const failAtMin = sets.find(x => x.rir === 0 && Number(x.reps) <= ex.reps.min);
-  const rirOk = rirKnown && sum.minRir! >= cfg.minRirToProgress;
+  // En los ejercicios por tiempo se va al máximo: llegar al tope de segundos basta para progresar (salvo en rutinas prudentes)
+  const rirOk = (ex.unit === 's' && !cfg.cautious) || (rirKnown && sum.minRir! >= cfg.minRirToProgress);
   const tooHard = cfg.cautious && rirKnown && sum.minRir! < 2;
   const hold = noLoad ? 'Mantén la dificultad.' : `Mantén ${kg(top)}.`;
 
@@ -102,11 +105,11 @@ export function suggest(ex: Exercise, sets: SetLike[] | null | undefined, progra
     if (noLoad) {
       return cfg.cautious
         ? { level: 'up', action: 'Podrías intentar una versión un poco más exigente o unos segundos más.', reason: 'Solo si no hubo dolor.' }
-        : { level: 'up', action: 'Aumenta un poco la dificultad o el tiempo.', reason: `La última vez hiciste ${repsText} con RIR ${fmtNum(sum.minRir)}.` };
+        : { level: 'up', action: 'Aumenta un poco la dificultad o el tiempo.', reason: `La última vez hiciste ${lastText}.` };
     }
     return cfg.cautious
-      ? { level: 'up', action: `Podrías subir a ${kg(up)}, solo si no hubo dolor.`, reason: `Sube solo el incremento mínimo (${fmtNum(step)} kg). La última vez hiciste ${repsText} con RIR ${fmtNum(sum.minRir)}.`, weight: up }
-      : { level: 'up', action: `Sube a ${kg(up)}.`, reason: `La última vez hiciste ${repsText} con RIR ${fmtNum(sum.minRir)}.`, weight: up };
+      ? { level: 'up', action: `Podrías subir a ${kg(up)}, solo si no hubo dolor.`, reason: `Sube solo el incremento mínimo (${fmtNum(step)} kg). La última vez hiciste ${lastText}.`, weight: up }
+      : { level: 'up', action: `Sube a ${kg(up)}.`, reason: `La última vez hiciste ${lastText}.`, weight: up };
   }
 
   if (allTop && !rirOk) {
@@ -139,6 +142,6 @@ export function suggest(ex: Exercise, sets: SetLike[] | null | undefined, progra
     level: 'hold', action: hold, weight: top,
     reason: cfg.cautious
       ? `Prioriza un movimiento lento y sin dolor. Cuando hagas ${ex.reps.max} en las ${ex.sets} series con RIR ${cfg.minRirToProgress} o más, podrías subir a ${kg(up)}.`
-      : `Cuando hagas ${ex.reps.max} repeticiones en todas las series, sube a ${kg(up)}.`
+      : `Cuando hagas ${ex.reps.max} ${unitWord} en todas las series, sube a ${kg(up)}.`
   };
 }

@@ -7,7 +7,7 @@ test('alternativa: máquina ocupada, series aparte y vuelta al ejercicio origina
   await card.getByRole('button', { name: /Máquina ocupada\? Hacer la alternativa: Sentadilla en Smith o hack/ }).click();
 
   const alt = page.getByRole('article', { name: 'Sentadilla en Smith o hack' });
-  await expect(alt).toContainText('Ejercicio 1 de 5 · alternativa');
+  await expect(alt).toContainText('Ejercicio 1 de 7 · alternativa');
   await expect(alt).toContainText('Estás haciendo la alternativa de Sentadilla con barra');
   // Se puede volver antes de registrar
   await alt.getByRole('button', { name: 'Volver a Sentadilla con barra' }).click();

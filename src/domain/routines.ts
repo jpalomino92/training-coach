@@ -41,7 +41,7 @@ export const PAIN_GUIDE = {
 export const routinePrograms: Record<string, Program> = {
 
   /* ------------------------------------------------------
-     PROGRAMA ORIGINAL (hombre) — se conserva tal cual
+     PROGRAMA ORIGINAL (hombre) — sin abdominales y con trabajo de agarre
      ------------------------------------------------------ */
   maleUpperLower: {
     id: 'maleUpperLower',
@@ -67,7 +67,9 @@ export const routinePrograms: Record<string, Program> = {
         E('rdl_bar', 'Peso muerto rumano', 3, '8-10', '2', 150, 'rdl', 'Isquiotibiales y glúteo', 'Rodillas casi fijas. Lleva la cadera atrás hasta sentir estirar el isquio.', 'Peso muerto rumano con mancuernas', { compound: true }),
         E('leg_press', 'Prensa', 3, '10-12', '2', 90, 'legpress', 'Cuádriceps', 'La zona lumbar no se despega del respaldo. No bloquees las rodillas arriba.', 'Sentadilla hack', { compound: true }),
         E('leg_curl_lying', 'Curl femoral tumbado', 3, '10-12', '1-2', 90, 'legcurl', 'Isquiotibiales', 'Cadera pegada al banco. Baja lento, en 3 segundos.', 'Curl femoral sentado'),
-        E('calf_standing', 'Gemelos de pie', 4, '10-15', '1-2', 60, 'calf', 'Gemelos', 'Pausa de 1 segundo abajo, en estiramiento completo.', 'Gemelos en prensa')
+        E('calf_standing', 'Gemelos de pie', 4, '10-15', '1-2', 60, 'calf', 'Gemelos', 'Pausa de 1 segundo abajo, en estiramiento completo.', 'Gemelos en prensa'),
+        E('db_hold', 'Sostener mancuernas pesadas', 3, '20-40s', '1', 90, 'farmer', 'Agarre y antebrazo', 'Mancuernas pesadas a los lados, brazos estirados y hombros atrás y abajo. Aprieta el mango con fuerza y aguanta quieto. Cuando aguantes 40 s en las 3 series, sube peso o pasa al paseo del granjero.', 'Paseo del granjero', { weightStep: 1 }),
+        E('plate_pinch', 'Pinza con discos', 3, '15-60s', '0', 90, 'farmer', 'Agarre de pinza (dedos y pulgar)', 'Junta dos discos con la cara lisa hacia fuera y sujétalos solo con los dedos y el pulgar. Aguanta todo lo que puedas y apunta los segundos y el peso total de los discos de una mano.', 'Sostener un disco por el borde')
       ]},
       { id: 'TA', name: 'Torso A', focus: 'Fuerza en básicos', color: 'blue', exercises: [
         E('bench_press', 'Press banca', 4, '6-8', '2-3', 150, 'bench', 'Pectoral y tríceps', 'Escápulas juntas y abajo. La barra baja a la línea del pecho.', 'Press en máquina', { compound: true }),
@@ -93,7 +95,8 @@ export const routinePrograms: Record<string, Program> = {
         E('dips', 'Fondos o press en máquina', 3, '8-10', '2', 90, 'dips', 'Pectoral y tríceps', 'Inclínate un poco hacia delante. Baja hasta que el codo forme 90°.', 'Press de pecho en máquina'),
         E('face_pull', 'Face pull', 3, '12-15', '2', 60, 'facepull', 'Deltoide posterior', 'Tira de la cuerda hacia la frente, abriendo las manos.', 'Pájaros con mancuernas'),
         E('hammer_curl', 'Curl martillo', 3, '10-12', '1-2', 60, 'curl', 'Bíceps y braquial', 'Agarre neutro, como sosteniendo un martillo.', 'Curl con cuerda en polea', { weightStep: 1 }),
-        E('triceps_ext', 'Extensión de tríceps', 3, '10-12', '1-2', 60, 'pushdown', 'Tríceps', 'Codos fijos. Estira del todo en cada repetición.', 'Tríceps en polea')
+        E('triceps_ext', 'Extensión de tríceps', 3, '10-12', '1-2', 60, 'pushdown', 'Tríceps', 'Codos fijos. Estira del todo en cada repetición.', 'Tríceps en polea'),
+        E('dead_hang', 'Colgarse de la barra', 3, '20-90s', '0', 90, 'pullup', 'Agarre, antebrazo y hombros', 'Agarre a la anchura de los hombros y brazos estirados, con los hombros un poco activos para no colgar de las articulaciones. Aguanta lo máximo que puedas y baja apoyando los pies, sin soltarte de golpe.', 'Colgarse con los pies apoyados en un banco')
       ]},
       { id: 'PC', name: 'Pierna C', focus: 'Opcional, 5.º día', color: 'black', optional: true, exercises: [
         E('deadlift', 'Peso muerto convencional', 3, '5-6', '2-3', 180, 'deadlift', 'Cadena posterior', 'Barra pegada a las piernas. Empuja el suelo con los pies, espalda neutra.', 'Peso muerto con barra hexagonal', { compound: true }),

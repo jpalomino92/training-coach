@@ -108,7 +108,7 @@ for (const [label, width, height] of WIDTHS) for (const theme of THEMES) {
     await signUp(page, 'lucia@correo.com');
     await onboard(page, 'Lucía', ROUTINE.female);
     await seedLucia(page);
-    await expect(page.getByText('En progreso · 2 de 17 series')).toBeVisible();
+    await expect(page.getByText('En progreso · 2 de 23 series')).toBeVisible();
     await shot('hoy-en-progreso');
     await scrollTo(page.locator('.set-edit'));
     await shot('hoy-serie-rellenada');
