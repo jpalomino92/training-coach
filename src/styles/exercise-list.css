@@ -35,3 +35,12 @@
 .ill.xs{width:36px;height:36px;border-radius:8px}
 .ill.md{width:48px;height:48px;border-radius:12px}
 .ill svg.pose{width:86%;height:86%}
+
+/* ===== Biseries y circuitos ===== */
+.ss{display:flex;flex-direction:column;gap:12px;padding:12px;margin:0 -4px;border-radius:var(--r-xl);background:var(--day-tint)}
+.ss-head{display:flex;flex-direction:column;gap:4px;padding:0 4px}
+.ss-head .hint{margin:0}
+.ss-head .btn-link{align-self:flex-start;height:auto;min-height:var(--tap);padding:0;white-space:normal;text-align:left;font-size:15px;line-height:1.3}
+.ss-tag{display:inline-flex;align-items:center;gap:6px;font:700 15px/1.2 var(--font-display);letter-spacing:.06em;text-transform:uppercase;color:var(--day-text)}
+.ss-tag svg{width:16px;height:16px;flex-shrink:0}
+.ss-rows{display:flex;flex-direction:column;gap:8px;padding:10px 0 0 10px;border-left:3px solid var(--day)}

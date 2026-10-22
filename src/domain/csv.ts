@@ -4,10 +4,12 @@
    aaaa-mm-dd, dd/mm/aaaa o dd-mm-aaaa. Exporta con ';' y coma decimal
    (lo que abre bien Excel en español).
    ========================================================== */
-import { fmtNum, localDate, parseNum } from './format';
+import { fmtNum, localDate, maxReps as maxRepsOf, parseNum, unitWord } from './format';
 import { altExercise, baseKey, resolveExercise } from './alternatives';
 import { builtinLookup, programList } from './routines';
 import type { BodyWeightInput, Exercise, Program, ProgramLookup, UserData } from './types';
+
+const capitalize = (t: string) => t[0].toUpperCase() + t.slice(1);
 
 export interface CsvError { line: number; message: string }
 
@@ -138,9 +140,9 @@ export function importExerciseSets(text: string, program: Program, data: Pick<Us
       const other = programList().find(p => p.id !== program.id && findByName(p, r[cols.exercise] || ''));
       return res.errors.push({ line, message: other ? `"${r[cols.exercise]}" es de otra rutina (${other.shortName}); solo se importan ejercicios de tu rutina actual.` : `Ejercicio no encontrado en tu rutina: "${r[cols.exercise] || ''}".` });
     }
-    const maxReps = ex.unit === 's' ? 600 : 50;
+    const maxReps = maxRepsOf(ex);
     const reps = parseNum(r[cols.reps] || '');
-    if (reps == null || Number.isNaN(reps) || !Number.isInteger(reps) || reps < 1 || reps > maxReps) return res.errors.push({ line, message: `${ex.unit === 's' ? 'Segundos' : 'Repeticiones'} no válidas: "${r[cols.reps] || ''}" (entre 1 y ${maxReps}).` });
+    if (reps == null || Number.isNaN(reps) || !Number.isInteger(reps) || reps < 1 || reps > maxReps) return res.errors.push({ line, message: `${capitalize(unitWord(ex))} no válidas: "${r[cols.reps] || ''}" (entre 1 y ${maxReps}).` });
     const weight = cols.weight >= 0 ? parseNum(r[cols.weight] || '') : null;
     if (weight != null && (Number.isNaN(weight) || weight < 0 || weight > 500)) return res.errors.push({ line, message: `Peso no válido: "${r[cols.weight]}" (entre 0 y 500).` });
     const rir = cols.rir >= 0 ? parseNum(r[cols.rir] || '') : null;

@@ -13,10 +13,12 @@ interface Props {
   errorId?: string;
   big?: boolean;
   min?: number;
+  /** Unidad de la carga: kg o bloques. */
+  unit?: 'kg' | 'bloques';
 }
 
 export const WeightStepper = forwardRef<HTMLInputElement, Props>(function WeightStepper(
-  { label = 'Peso kg', value, step, onChange, error, errorId, big, min = 0 }, ref
+  { label, value, step, onChange, error, errorId, big, min = 0, unit = 'kg' }, ref
 ) {
   const id = useId();
   const bump = (dir: 1 | -1) => {
@@ -26,11 +28,11 @@ export const WeightStepper = forwardRef<HTMLInputElement, Props>(function Weight
   };
   return (
     <div className="fl">
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id}>{label ?? (unit === 'bloques' ? 'Bloques' : 'Peso kg')}</label>
       <div className={big ? 'stepper big' : 'stepper'}>
-        <button type="button" className="step" onClick={() => bump(-1)} aria-label={`Restar ${fmtNum(step)} kg`}><Icon name="minus" /></button>
+        <button type="button" className="step" onClick={() => bump(-1)} aria-label={`Restar ${fmtNum(step)} ${unit}`}><Icon name="minus" /></button>
         <NumInput ref={ref} id={id} value={value} onChange={onChange} decimal error={error} errorId={errorId} />
-        <button type="button" className="step" onClick={() => bump(1)} aria-label={`Sumar ${fmtNum(step)} kg`}><Icon name="plus" /></button>
+        <button type="button" className="step" onClick={() => bump(1)} aria-label={`Sumar ${fmtNum(step)} ${unit}`}><Icon name="plus" /></button>
       </div>
     </div>
   );

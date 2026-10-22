@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures';
-import { completeSet, completeWholeDay, createUser, currentSet, ROUTINE, skipRest, tab } from './helpers';
+import { completeSet, completeWholeDay, createUser, currentSet, finishWorkout, ROUTINE, skipRest, tab } from './helpers';
 
 test('alternativa: máquina ocupada, series aparte y vuelta al ejercicio original', async ({ page }) => {
   await createUser(page, 'alt@correo.com', 'Alba', ROUTINE.male);
@@ -30,22 +30,22 @@ test('alternativa: máquina ocupada, series aparte y vuelta al ejercicio origina
 
 test('resumen al terminar: duración, series, volumen y comparación con la sesión anterior', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-09-14T10:00:00'));
-  await createUser(page, 'resumen@correo.com', 'Rosa', ROUTINE.safe, { ack: true });
+  await createUser(page, 'resumen@correo.com', 'Rosa', ROUTINE.female);
   await completeWholeDay(page, { weight: '20', reps: '10', rir: '3' });
   const summary = page.getByRole('region', { name: /Entrenamiento completado el 14\/09\/2026/ });
-  await expect(summary).toContainText('Series14 de 14');
+  await expect(summary).toContainText('Series16 de 16');
   await expect(summary).toContainText(/Volumen\d/);
 
   await page.clock.setFixedTime(new Date('2026-09-21T10:30:00'));
   await page.reload();
-  await page.getByRole('button', { name: /^SA,/ }).click();
-  await completeSet(page, { weight: '25' }); // más peso que la vez anterior en la prensa
+  await page.getByRole('button', { name: /^F1,/ }).click();
+  await completeSet(page, { weight: '25' }); // más peso que la vez anterior en el hip thrust
   await skipRest(page);
   await completeWholeDay(page);
   const again = page.getByRole('region', { name: /Entrenamiento completado el 21\/09\/2026/ });
-  await expect(again).toContainText('La sesión anterior de este día (14/09/2026): 14 series y 2800 kg');
+  await expect(again).toContainText('La sesión anterior de este día (14/09/2026): 16 series y 3.200 kg');
   await expect(again).toContainText(/volumen \+\d+ %/);
-  await expect(again).toContainText('Récord: Prensa de piernas');
+  await expect(again).toContainText('Récord: Hip thrust con barra');
 });
 
 test('nota del entrenamiento: se guarda sola y se ve en el historial', async ({ page }) => {
@@ -125,7 +125,7 @@ test('calendario mensual en el historial', async ({ page }) => {
   await completeSet(page, { weight: '80', reps: '8', rir: '2' });
   await skipRest(page);
   await page.getByRole('button', { name: 'Terminar entrenamiento' }).click();
-  await page.getByRole('button', { name: 'Terminar', exact: true }).click();
+  await finishWorkout(page);
 
   await tab(page, 'Historial');
   const cal = page.getByRole('region', { name: 'Calendario: Septiembre 2026' });
@@ -144,7 +144,7 @@ test('semana: el día completado se sigue viendo hasta el domingo y la alternati
   await completeSet(page, { weight: '60', reps: '8', rir: '2' });
   await skipRest(page);
   await page.getByRole('button', { name: 'Terminar entrenamiento' }).click();
-  await page.getByRole('button', { name: 'Terminar', exact: true }).click();
+  await finishWorkout(page);
 
   // Al día siguiente, el día sigue marcado como completado
   await page.clock.setFixedTime(new Date('2026-09-15T10:00:00'));

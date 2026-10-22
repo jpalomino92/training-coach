@@ -1,7 +1,7 @@
 /* Resumen al terminar el entrenamiento y nota del día. */
 import { useEffect, useId, useRef, useState } from 'react';
 import { fmtDate } from '../domain/format';
-import { fmtMinutes, fmtThousands, workoutSummary } from '../domain/summary';
+import { fmtMinutes, volumeText, workoutSummary } from '../domain/summary';
 import type { Workout } from '../domain/types';
 import { useApp } from '../state/AppContext';
 import { Icon } from './Icon';
@@ -16,12 +16,12 @@ export function WorkoutSummaryCard({ workout, onHistory }: { workout: Workout; o
       <dl className="sum-grid">
         <div><dt>Duración</dt><dd>{s.minutes != null ? fmtMinutes(s.minutes) : '—'}</dd></div>
         <div><dt>Series</dt><dd>{s.sets} de {s.total}</dd></div>
-        <div><dt>Volumen</dt><dd>{s.volume > 0 ? `${fmtThousands(s.volume)} kg` : '—'}</dd></div>
+        <div><dt>Volumen</dt><dd>{s.volume > 0 ? volumeText(s.volume, s.approx) : '—'}</dd></div>
       </dl>
       {s.previous && (
         <p className="sm">
           La sesión anterior de este día ({fmtDate(s.previous.date)}): {s.previous.sets} series
-          {s.previous.volume > 0 && <> y {fmtThousands(s.previous.volume)} kg</>}
+          {s.previous.volume > 0 && <> y {volumeText(s.previous.volume, s.approx)}</>}
           {diff != null && <> · volumen {diff > 0 ? `+${diff}` : diff} %</>}.
         </p>
       )}

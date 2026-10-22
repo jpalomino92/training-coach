@@ -1,21 +1,25 @@
 /* ==========================================================
    HOY: una sola tarea a la vez. Solo el ejercicio activo está abierto.
    Sin botón "Empezar": la primera serie registrada pone el día en progreso.
+   Biseries y circuitos: sus ejercicios se abren juntos y se alternan
+   serie a serie; el descanso llega al terminar cada vuelta.
    ========================================================== */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Button } from '../components/Button';
 import { DayDisc, DiscBadge } from '../components/DayDisc';
 import { ExerciseCard } from '../components/ExerciseCard';
 import { ExerciseRow } from '../components/ExerciseRow';
-import { HalfIcon } from '../components/Icon';
+import { HalfIcon, Icon } from '../components/Icon';
 import { HealthNoticeCompact, HealthNoticeFull } from '../components/HealthNotice';
 import { WorkoutNote, WorkoutSummaryCard } from '../components/WorkoutSummary';
-import { fmtDate, fmtToday } from '../domain/format';
+import { WorkoutDoneSheet } from '../components/WorkoutDoneSheet';
+import { fmtDate, fmtToday, restText } from '../domain/format';
 import { restFor } from '../domain/prefs';
-import type { Exercise, Feel, Program } from '../domain/types';
+import type { Exercise, Feel, Program, SupersetPrefs } from '../domain/types';
 import { streak, weeklyCounts, weeklyGoal } from '../domain/consistency';
 import { altExercise, altKey, baseKey } from '../domain/alternatives';
 import { activeWorkout, dayStatus, isExerciseDone, lastSessionFor, lastUsedAlternative, programWorkouts, totalSets, usesAlternative } from '../domain/workout';
+import { canPair, dayUnits, doneIndexes, isGroup, nextTurn, supersetKey, unitLabel, unitRounds, withGroup, withoutUnit, withPair, type DayUnit } from '../domain/supersets';
 import { useApp, useDay } from '../state/AppContext';
 import { useTimer, vibrate } from '../state/TimerContext';
 
@@ -58,6 +62,8 @@ export function TodayView() {
   /** Alternativa elegida antes de registrar la primera serie: `${día}:${ejercicio}`. Sin elegir, se repite la modalidad de la última vez. */
   const [altChoice, setAltChoice] = useState<Record<string, boolean>>({});
   const [confirmFinish, setConfirmFinish] = useState(false);
+  /** Entrenamiento recién terminado: muestra la ventana de resumen. */
+  const [celebrate, setCelebrate] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [compact, setCompact] = useState(false);
   const headRef = useRef<HTMLDivElement>(null);
@@ -74,13 +80,19 @@ export function TodayView() {
     if (sets.some(s => s.exercise_key === ex.key)) return ex;
     return (altChoice[`${day.id}:${ex.key}`] ?? carriedAlt(ex)) ? altExercise(ex) : ex;
   };
-  const firstOpen = day.exercises.find(e => !isExerciseDone(sets, e));
-  const activeKey = openKey[day.id] && day.exercises.some(e => e.key === openKey[day.id]) ? openKey[day.id] : firstOpen?.key ?? null;
-  const active = day.exercises.find(e => e.key === activeKey) || null;
-  const activeIdx = active ? day.exercises.indexOf(active) : -1;
-  const doneList = day.exercises.filter(e => e !== active && isExerciseDone(sets, e));
-  const nextList = day.exercises.filter(e => e !== active && !isExerciseDone(sets, e));
-  const nextAfterActive = active ? (day.exercises.slice(activeIdx + 1).find(e => !isExerciseDone(sets, e)) || day.exercises.find(e => e !== active && !isExerciseDone(sets, e)) || null) : null;
+  // El día se recorre por bloques: un ejercicio suelto, una biserie o un circuito
+  const spKey = supersetKey(program.id, day.id);
+  const sp: SupersetPrefs = prefs.supersets?.[spKey] || {};
+  const units = dayUnits(day, sp);
+  const unitDone = (u: DayUnit) => u.exercises.every(e => isExerciseDone(sets, e));
+  const unitOf = (key: string) => units.find(u => u.exercises.some(e => e.key === key));
+  const active = (openKey[day.id] && unitOf(openKey[day.id])) || units.find(u => !unitDone(u)) || null;
+  const activeIdx = active ? units.indexOf(active) : -1;
+  const doneList = units.filter(u => u !== active && unitDone(u));
+  const nextList = units.filter(u => u !== active && !unitDone(u));
+  const nextUnit = active ? (units.slice(activeIdx + 1).find(u => !unitDone(u)) || units.find(u => u !== active && !unitDone(u)) || null) : null;
+  const nextAfterActive = nextUnit?.exercises[0] ?? null;
+  const nextCount = nextList.reduce((n, u) => n + u.exercises.length, 0);
 
   // Al volver a Hoy con un entrenamiento en marcha, baja sola hasta la serie activa
   useLayoutEffect(() => {
@@ -119,11 +131,32 @@ export function TodayView() {
       setOpenKey(m => ({ ...m, [day.id]: baseKey(ex.key) }));
       if (r.dayCompleted) {
         timer.stop();
-        showToast('¡Entrenamiento completado!');
+        setCelebrate(r.set.workout_id);
         return;
       }
       if (mode === 'edit') return; // Editar no reinicia el temporizador
       vibrate(30);
+      const unit = unitOf(baseKey(ex.key));
+      if (unit && isGroup(unit)) {
+        const after = [...sets.filter(s => !(s.exercise_key === ex.key && s.set_index === index)), r.set];
+        const turn = nextTurn(unit.exercises, after);
+        if (turn && turn.set === index) {
+          // Misma vuelta: el siguiente ejercicio, sin descanso
+          timer.stop();
+          setOpenKey(m => ({ ...m, [day.id]: turn.ex.key }));
+          requestAnimationFrame(() => scrollToEl(document.querySelector(`#ex-${turn.ex.key} .set-edit`), 'center'));
+          return;
+        }
+        const rest = Math.max(...unit.exercises.map(e => restFor(variantOf(e), prefs)));
+        if (turn) {
+          const nx = variantOf(turn.ex);
+          timer.start(rest, `Descanso · luego vuelta ${turn.set + 1}: ${nx.name}`, `Toca: ${nx.name} · serie ${turn.set + 1}`);
+        } else {
+          const nx = nextAfterActive;
+          timer.start(rest, nx ? `Descanso · luego ${nx.name}` : 'Descanso', nx ? `Toca: ${nx.name} · serie 1` : 'Revisa las series que te quedan.');
+        }
+        return;
+      }
       const doneNow = new Set([...exSets(ex).map(s => s.set_index), index]);
       const nextSet = Array.from({ length: ex.sets }, (_, i) => i).find(i => !doneNow.has(i));
       if (nextSet != null) {
@@ -142,7 +175,7 @@ export function TodayView() {
       await app.finishWorkout(day);
       timer.stop();
       setConfirmFinish(false);
-      showToast('Entrenamiento guardado.');
+      if (workout) setCelebrate(workout.id);
     } finally { setBusy(false); }
   });
 
@@ -152,8 +185,41 @@ export function TodayView() {
   const thisWeek = weeklyCounts(data.workouts, 1)[0].count;
   const weeks = streak(data.workouts, goal);
 
-  const cardFor = (base: Exercise) => {
+  const saveSuperset = (next: SupersetPrefs, msg: string) => guard(async () => {
+    await app.updateSettings({ supersets: { ...(prefs.supersets || {}), [spKey]: next } });
+    showToast(msg);
+  });
+
+  /** Acción de biserie para un ejercicio suelto: unirlo al siguiente o volver al grupo de la rutina. */
+  const supersetAction = (u: DayUnit) => {
+    if (isGroup(u)) return undefined;
+    const ex = u.exercises[0];
+    if (ex.group && sp.split?.includes(ex.group)) {
+      const circuit = day.exercises.filter(e => e.group === ex.group).length > 2;
+      return {
+        label: `Volver a hacerlo en ${circuit ? 'circuito' : 'biserie'}, como indica la rutina`,
+        onClick: () => saveSuperset(withGroup(sp, ex.group!), circuit ? 'Vuelves al circuito.' : 'Vuelves a la biserie.')
+      };
+    }
+    const next = units[units.indexOf(u) + 1];
+    if (!canPair(u, next) || isExerciseDone(sets, ex) || isExerciseDone(sets, next.exercises[0])) return undefined;
+    const b = next.exercises[0];
+    return { label: `Hacer en biserie con ${variantOf(b).name}`, onClick: () => saveSuperset(withPair(sp, ex.key, b.key), 'Biserie guardada. Se mantiene las próximas semanas.') };
+  };
+
+  /** En una biserie, cuándo le toca a este ejercicio (sin texto si es su turno o ya terminó). */
+  const waitText = (base: Exercise, turn: { ex: Exercise; set: number } | null) => {
+    if (!turn || turn.ex === base) return undefined;
+    const done = doneIndexes(sets, base);
+    const nextSet = Array.from({ length: base.sets }, (_, i) => i).find(i => !done.has(i));
+    if (nextSet == null) return undefined;
+    return nextSet === turn.set ? `después de ${variantOf(turn.ex).name}` : 'en la siguiente vuelta';
+  };
+
+  const cardFor = (base: Exercise, group?: { unit: DayUnit; turn: { ex: Exercise; set: number } | null }) => {
     const ex = variantOf(base);
+    const isLast = !!group && group.unit.exercises[group.unit.exercises.length - 1] === base;
+    const groupRest = group ? Math.max(...group.unit.exercises.map(e => restFor(variantOf(e), prefs))) : 0;
     const locked = sets.some(s => s.exercise_key === base.key || s.exercise_key === altKey(base.key));
     const last = lastSessionFor(data, program, ex.key, workout?.id);
     return (
@@ -165,7 +231,10 @@ export function TodayView() {
           onToggle: () => setAltChoice(m => ({ ...m, [`${day.id}:${base.key}`]: ex.key === base.key }))
         } : undefined}
         sets={exSets(ex)} history={historyOf(ex.key)} last={last} lastFeel={last?.workout.feel?.[ex.key]} feel={workout?.feel?.[ex.key]}
-        note={data.notes[ex.key]?.note || ''} next={nextAfterActive}
+        note={data.notes[ex.key]?.note || ''} next={group ? null : nextAfterActive}
+        waitFor={group ? waitText(base, group.turn) : undefined}
+        restLabel={group ? (isLast ? `Descanso ${restText(groupRest)} al terminar la vuelta` : 'Sin descanso') : undefined}
+        superset={group ? undefined : supersetAction(unitOf(base.key)!)}
         onRecord={(i, v, mode) => record(ex, i, v, mode)}
         onDelete={s => guard(() => app.removeSet(s))}
         onFeel={(f: Feel | null) => guard(async () => {
@@ -175,6 +244,45 @@ export function TodayView() {
         onSaveNote={t => app.saveNote(ex.key, t)}
         onNext={() => nextAfterActive && openExercise(nextAfterActive.key)}
       />
+    );
+  };
+
+  /** Biserie o circuito abierto: sus ejercicios juntos, alternando serie a serie. */
+  const groupBlock = (u: DayUnit) => {
+    const turn = nextTurn(u.exercises, sets);
+    const label = unitLabel(u);
+    return (
+      <section className="ss" aria-label={`${label}: ${u.exercises.map(e => variantOf(e).name).join(' y ')}`}>
+        <div className="ss-head">
+          <span className="ss-tag"><Icon name="link" />{label} · {unitRounds(u)} vueltas</span>
+          {turn && <p className="hint">Haz una serie de cada ejercicio seguida y descansa al terminar la vuelta.</p>}
+          {turn && (
+            <button type="button" className="btn btn-link" onClick={() => saveSuperset(withoutUnit(sp, u), 'Ahora cada ejercicio va por separado.')}>
+              Hacer los ejercicios por separado
+            </button>
+          )}
+        </div>
+        {u.exercises.map(e => cardFor(e, { unit: u, turn }))}
+        {!turn && nextAfterActive && (
+          <Button variant="primary" block className="next-btn" iconRight="chevR" onClick={() => openExercise(nextAfterActive.key)}>
+            <span>Siguiente: {variantOf(nextAfterActive).name}</span>
+          </Button>
+        )}
+      </section>
+    );
+  };
+
+  const rowsFor = (u: DayUnit, withFeel: boolean) => {
+    const rows = u.exercises.map(ex => {
+      const v = variantOf(ex);
+      return <ExerciseRow key={ex.key} ex={v} number={day.exercises.indexOf(ex) + 1} sets={exSets(v)} feel={withFeel ? workout?.feel?.[v.key] : undefined} onOpen={() => openExercise(ex.key)} />;
+    });
+    if (!isGroup(u)) return rows;
+    return (
+      <div key={u.exercises[0].key} className="ss-rows" role="group" aria-label={`${unitLabel(u)} · ${unitRounds(u)} vueltas`}>
+        <span className="ss-tag"><Icon name="link" />{unitLabel(u)} · {unitRounds(u)} vueltas</span>
+        {rows}
+      </div>
     );
   };
 
@@ -231,23 +339,19 @@ export function TodayView() {
         {doneList.length > 0 && (
           <>
             <h3 className="sec eyebrow">Hecho</h3>
-            {doneList.map(ex => (
-              <ExerciseRow key={ex.key} ex={variantOf(ex)} number={day.exercises.indexOf(ex) + 1} sets={exSets(variantOf(ex))} feel={workout?.feel?.[variantOf(ex).key]} onOpen={() => openExercise(ex.key)} />
-            ))}
+            {doneList.map(u => rowsFor(u, true))}
           </>
         )}
         {active && (
           <>
             <h3 className="sec eyebrow">Ahora</h3>
-            {cardFor(active)}
+            {isGroup(active) ? groupBlock(active) : cardFor(active.exercises[0])}
           </>
         )}
         {nextList.length > 0 && (
           <>
-            <h3 className="sec eyebrow">Siguientes · {nextList.length} {nextList.length === 1 ? 'ejercicio' : 'ejercicios'}</h3>
-            {nextList.map(ex => (
-              <ExerciseRow key={ex.key} ex={variantOf(ex)} number={day.exercises.indexOf(ex) + 1} sets={exSets(variantOf(ex))} onOpen={() => openExercise(ex.key)} />
-            ))}
+            <h3 className="sec eyebrow">Siguientes · {nextCount} {nextCount === 1 ? 'ejercicio' : 'ejercicios'}</h3>
+            {nextList.map(u => rowsFor(u, false))}
           </>
         )}
       </div>
@@ -274,6 +378,8 @@ export function TodayView() {
       {workout?.status === 'completed' && <div className="summary-wrap"><WorkoutSummaryCard workout={workout} onHistory={() => setTab('historial')} /></div>}
 
       {workout && <div className="note-wrap"><WorkoutNote key={workout.id} workout={workout} /></div>}
+
+      {workout?.status === 'completed' && celebrate === workout.id && <WorkoutDoneSheet workout={workout} onClose={() => setCelebrate(null)} />}
     </div>
   );
 }

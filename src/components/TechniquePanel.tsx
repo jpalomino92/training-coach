@@ -63,8 +63,8 @@ export const TechniquePanel = forwardRef<TechniquePanelHandle, Props>(function T
             <p>{ex.warn}</p>
           </div>
         )}
-        <a className="vid" href={`https://www.youtube.com/results?search_query=${q}`} target="_blank" rel="noopener noreferrer">
-          <Icon name="play" />Ver vídeo de la técnica<span className="sr-only"> (se abre en otra pestaña)</span>
+        <a className="vid" href={ex.videoUrl || `https://www.youtube.com/results?search_query=${q}`} target="_blank" rel="noopener noreferrer">
+          <Icon name="play" />{ex.videoUrl ? 'Ver vídeo del ejercicio' : 'Ver vídeo de la técnica'}<span className="sr-only"> (se abre en otra pestaña)</span>
         </a>
         {showFeel && <FeelPicker id={feelId} value={feel} onChange={onFeel} />}
         <div className="field">

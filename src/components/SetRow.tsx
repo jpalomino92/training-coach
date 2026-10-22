@@ -1,6 +1,6 @@
 /* Filas de serie: pendiente, editable (nueva o corrigiendo una registrada) y registrada. */
 import { useId, useRef, useState, type FormEvent } from 'react';
-import { fmtNum, parseNum, repLabel, setText } from '../domain/format';
+import { fmtNum, isTimed, loadUnit, maxReps as maxRepsOf, parseNum, repLabel, setText, unitWord } from '../domain/format';
 import { platesText } from '../domain/plates';
 import type { Exercise, WorkoutSet } from '../domain/types';
 import { Button } from './Button';
@@ -8,8 +8,9 @@ import { FieldError, NumberField } from './Fields';
 import { Icon } from './Icon';
 import { WeightStepper } from './WeightStepper';
 
-export function SetPending({ index }: { index: number }) {
-  return <div className="set-todo">Serie {index + 1} · pendiente</div>;
+/** `wait`: en una biserie, cuándo toca ("después de Remo", "en la siguiente vuelta"). */
+export function SetPending({ index, wait }: { index: number; wait?: string }) {
+  return <div className="set-todo">Serie {index + 1} · {wait || 'pendiente'}</div>;
 }
 
 export function SetDone({ set, ex, fresh, record, onEdit }: { set: WorkoutSet; ex: Exercise; fresh?: boolean; record?: string; onEdit(): void }) {
@@ -39,13 +40,13 @@ type Errors = Partial<Record<'weight' | 'reps' | 'rir', string>>;
 /** Valida al pulsar Completar: reps 1–50 (segundos 1–600), RIR 0–5, peso 0–500. */
 export function validateSet(ex: Exercise, d: SetDraft): { errors: Errors; values?: { weight: number | null; reps: number; rir: number | null } } {
   const errors: Errors = {};
-  const maxReps = ex.unit === 's' ? 600 : 50;
+  const maxReps = maxRepsOf(ex);
   const reps = parseNum(d.reps);
   const weight = parseNum(d.weight);
   const rir = parseNum(d.rir);
   if (reps == null || Number.isNaN(reps) || !Number.isInteger(reps) || reps < 1 || reps > maxReps) {
-    errors.reps = ex.unit === 's'
-      ? `Escribe cuántos segundos aguantaste (entre 1 y ${maxReps}).`
+    errors.reps = isTimed(ex)
+      ? `Escribe cuántos ${unitWord(ex)} hiciste (entre 1 y ${maxReps}).`
       : `Escribe cuántas repeticiones hiciste (entre 1 y ${maxReps}).`;
   }
   if (weight != null && (Number.isNaN(weight) || weight < 0 || weight > 500)) errors.weight = 'El peso tiene que ser un número entre 0 y 500, por ejemplo 12,5.';
@@ -107,11 +108,14 @@ export function SetEditor({ ex, index, mode, initial, reference, onSubmit, onCan
           ? <button type="button" className="btn btn-link danger-link" onClick={del}>Eliminar serie</button>
           : reference && <span className="muted">{reference}</span>}
       </div>
-      <div className="w"><WeightStepper ref={weightRef} value={d.weight} step={ex.weightStep} onChange={v => setD({ ...d, weight: v })} error={!!errors.weight} errorId={errId} />
-        {barKg != null && <p className="plates" aria-live="polite">{platesText(parseNum(d.weight), barKg)}</p>}</div>
+      {!ex.noWeight && (
+        <div className="w"><WeightStepper ref={weightRef} value={d.weight} step={ex.weightStep} unit={loadUnit(ex)} onChange={v => setD({ ...d, weight: v })} error={!!errors.weight} errorId={errId} />
+          {barKg != null && <p className="plates" aria-live="polite">{platesText(parseNum(d.weight), barKg)}</p>}</div>
+      )}
       <div className="two">
         <NumberField ref={repsRef} label={repLabel(ex)} value={d.reps} onChange={v => setD({ ...d, reps: v })} error={!!errors.reps} errorId={errId} />
-        <NumberField ref={rirRef} label="RIR" value={d.rir} onChange={v => setD({ ...d, rir: v })} error={!!errors.rir} errorId={errId} decimal />
+        {/* Sin RIR objetivo (cardio, movilidad) no se pide */}
+        {ex.rir && <NumberField ref={rirRef} label="RIR" value={d.rir} onChange={v => setD({ ...d, rir: v })} error={!!errors.rir} errorId={errId} decimal />}
       </div>
       <FieldError id={errId}>{firstError}</FieldError>
       {mode === 'edit' ? (
@@ -121,7 +125,7 @@ export function SetEditor({ ex, index, mode, initial, reference, onSubmit, onCan
         </div>
       ) : (
         <div className="act"><Button variant="primary" block type="submit" icon="check" loading={busy}
-          disabledReason={empty ? (ex.unit === 's' ? 'Escribe los segundos' : 'Escribe el peso y las repeticiones') : null} showReason>
+          disabledReason={empty ? (isTimed(ex) ? `Escribe los ${unitWord(ex)}` : ex.noWeight ? 'Escribe las repeticiones' : 'Escribe el peso y las repeticiones') : null} showReason>
           Completar serie
         </Button></div>
       )}

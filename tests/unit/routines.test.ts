@@ -1,8 +1,9 @@
 /* El contenido de las rutinas debe coincidir literalmente con el prototipo.
    Solo se permiten el campo nuevo weightStep, el
-   renombrado requireAck → requiresHealthNotice, tres poses nuevas y
+   renombrado requireAck → requiresHealthNotice, tres poses nuevas,
    la retirada de los ejercicios de abdominales y el trabajo de agarre
-   añadido a la rutina de hombre. */
+   añadido a la rutina de hombre. La rutina de 56 años se sustituyó por
+   la del especialista y se comprueba aparte. */
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import vm from 'node:vm';
@@ -37,7 +38,7 @@ describe('rutinas', () => {
     expect(Object.keys(routinePrograms)).toEqual(['maleUpperLower', 'femaleFatLossMuscle', 'femaleMenopauseSafeStrength']);
   });
 
-  for (const id of Object.keys(legacy.routinePrograms)) {
+  for (const id of Object.keys(legacy.routinePrograms).filter(id => id !== 'femaleMenopauseSafeStrength')) {
     it(`${id}: contenido idéntico al prototipo`, () => {
       const old = JSON.parse(JSON.stringify(legacy.routinePrograms[id]));
       const cur = JSON.parse(JSON.stringify(routinePrograms[id]));
@@ -86,6 +87,39 @@ describe('rutinas', () => {
     for (const p of Object.values(routinePrograms)) for (const [, id] of p.weekPlan) {
       if (id) expect(p.days.some(d => d.id === id)).toBe(true);
     }
+  });
+});
+
+describe('rutina del especialista', () => {
+  const P = routinePrograms.femaleMenopauseSafeStrength;
+  it('cuatro sesiones: lunes, martes, jueves y viernes', () => {
+    expect(P.days.map(d => d.id)).toEqual(['S1', 'S2', 'S3', 'S4']);
+    expect(P.weekPlan).toEqual([['L', 'S1'], ['M', 'S2'], ['X', null], ['J', 'S3'], ['V', 'S4'], ['S', null], ['D', null]]);
+  });
+  it('claves propias, sin repetirse dentro de un día', () => {
+    for (const d of P.days) {
+      const keys = d.exercises.map(e => e.key);
+      expect(new Set(keys).size, d.id).toBe(keys.length);
+      for (const k of keys) expect(k.startsWith('sp_'), k).toBe(true);
+    }
+  });
+  it('los ejercicios de un mismo grupo van seguidos', () => {
+    for (const d of P.days) {
+      const groups = d.exercises.map(e => e.group);
+      for (const g of new Set(groups.filter(Boolean))) {
+        const idx = groups.flatMap((x, i) => (x === g ? [i] : []));
+        expect(idx[idx.length - 1] - idx[0] + 1, `${d.id}/${g}`).toBe(idx.length);
+        expect(idx.length).toBeGreaterThan(1);
+      }
+    }
+  });
+  it('el cardio se anota en minutos y sin peso', () => {
+    const walk = P.days[0].exercises[0];
+    expect(walk).toMatchObject({ key: 'sp_walk', unit: 'min', reps: { min: 7, max: 7 }, noWeight: true });
+  });
+  it('los ejercicios de la antigua "Fuerza segura" se siguen reconociendo en el historial', () => {
+    expect(findExerciseAnywhere('box_squat')?.name).toBe('Sentadilla a banco con mancuerna');
+    expect(findExerciseAnywhere('lat_pulldown_neutral')?.name).toBe('Jalón al pecho agarre neutro');
   });
 });
 

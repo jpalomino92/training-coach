@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures';
-import { completeSet, completeWholeDay, createUser, currentSet, ROUTINE, skipRest, tab } from './helpers';
+import { completeSet, completeWholeDay, createUser, currentSet, finishWorkout, ROUTINE, skipRest, tab } from './helpers';
 
 test('registrar, editar y borrar series', async ({ page }) => {
   await createUser(page, 'series@correo.com', 'Ana', ROUTINE.male);
@@ -48,12 +48,19 @@ test('registrar, editar y borrar series', async ({ page }) => {
 
 test('finalización automática al registrar la última serie del día', async ({ page }) => {
   await createUser(page, 'auto@correo.com', 'Carmen', ROUTINE.safe, { ack: true });
-  await completeWholeDay(page);
+  await completeWholeDay(page, { weight: '4', reps: '10', rir: '2' }, { keepOpen: true });
+  // Ventana de resumen: los bloques cuentan como 5 kg
+  const done = page.getByRole('dialog', { name: 'Entrenamiento completado' });
+  await expect(done).toContainText('¡Felicidades!');
+  await expect(done).toContainText(/Levantaste ≈ [\d.]+ kg en este entrenamiento\. Una? [a-zá ]+ pesa [\d.]+ kg de media\./);
+  await expect(done).toContainText('Series44 de 44');
+  await done.getByRole('button', { name: 'Listo' }).click();
+  await expect(done).toHaveCount(0);
   await expect(page.getByText(/^Entrenamiento completado el \d{2}\/\d{2}\/\d{4}$/)).toBeVisible();
-  await expect(page.getByRole('button', { name: /SA, Día A.*completado/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /S1, Sesión 1.*completado/ })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Terminar entrenamiento' })).toHaveCount(0);
   await tab(page, 'Historial');
-  await expect(page.getByText('✓ Completado · 14 series')).toBeVisible();
+  await expect(page.getByText('✓ Completado · 44 series')).toBeVisible();
 });
 
 test('finalización manual con series pendientes pide confirmación', async ({ page }) => {
@@ -65,7 +72,7 @@ test('finalización manual con series pendientes pide confirmación', async ({ p
   await expect(page.getByRole('button', { name: 'Cancelar' })).toBeFocused();
   await page.getByRole('button', { name: 'Cancelar' }).click();
   await page.getByRole('button', { name: 'Terminar entrenamiento' }).click();
-  await page.getByRole('button', { name: 'Terminar', exact: true }).click();
+  await finishWorkout(page);
   await expect(page.getByText(/^Entrenamiento completado el/)).toBeVisible();
   await tab(page, 'Historial');
   await expect(page.getByText('◐ Terminado con 1 de 23 series')).toBeVisible();
@@ -98,7 +105,7 @@ test('dolor: se distingue de la molestia muscular y la sesión siguiente muestra
   await expect(feel.getByRole('button', { name: 'Dolor articular, de espalda o neurológico' })).toHaveAttribute('aria-pressed', 'true');
   await expect(card.getByRole('alert')).toContainText('detén el ejercicio');
   await page.getByRole('button', { name: 'Terminar entrenamiento' }).click();
-  await page.getByRole('button', { name: 'Terminar', exact: true }).click();
+  await finishWorkout(page);
 
   // La semana siguiente, mismo día de la rutina
   await page.clock.setFixedTime(new Date('2026-09-28T10:00:00'));
@@ -124,7 +131,7 @@ test('molestia muscular normal no bloquea la sugerencia de subir', async ({ page
   }
   await page.getByRole('article', { name: 'Hip thrust con barra' }).getByRole('button', { name: 'Molestia muscular' }).click();
   await page.getByRole('button', { name: 'Terminar entrenamiento' }).click();
-  await page.getByRole('button', { name: 'Terminar', exact: true }).click();
+  await finishWorkout(page);
   await page.clock.setFixedTime(new Date('2026-09-28T10:00:00'));
   await page.reload();
   await page.getByRole('button', { name: /^F1,/ }).click();

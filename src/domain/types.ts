@@ -1,7 +1,8 @@
 /* Tipos del dominio: rutinas (datos) y registros de cada usuario. */
 
 export type DayColor = 'red' | 'blue' | 'yellow' | 'green' | 'black';
-export type Unit = 'reps' | 's';
+/** reps, segundos o minutos (cardio). */
+export type Unit = 'reps' | 's' | 'min';
 export type Feel = 'ok' | 'muscle' | 'pain';
 export type ThemePref = 'auto' | 'light' | 'dark';
 
@@ -20,8 +21,16 @@ export interface Exercise {
   perSide: boolean;
   warn: string;
   compound: boolean;
-  /** Incremento de peso para − / + y para el texto de la sugerencia (kg). */
+  /** Incremento de peso para − / + y para el texto de la sugerencia (kg o bloques). */
   weightStep: number;
+  /** Unidad de la carga: kg (por defecto) o bloques de la máquina. */
+  load?: 'kg' | 'bloques';
+  /** Sin carga (movilidad, estiramientos, cardio): no se pide el peso. */
+  noWeight?: boolean;
+  /** Ejercicios seguidos con el mismo `group` forman una biserie o un circuito. */
+  group?: string;
+  /** Vídeo propio del ejercicio (p. ej. el del especialista). */
+  videoUrl?: string;
   /** Ejercicios de ExerciseDB (rutinas propias del entrenador). */
   exercisedbId?: string;
   gifUrl?: string;
@@ -94,6 +103,15 @@ export interface Prefs {
   acks?: Record<string, string>;
   /** Semana tipo elegida por la persona para cada rutina: { programId: weekPlan }. Sin valor, la de la rutina. */
   week_plans?: Record<string, [string, string | null][]>;
+  /** Biseries elegidas por la persona, por `${programId}:${dayId}`. */
+  supersets?: Record<string, SupersetPrefs>;
+}
+
+export interface SupersetPrefs {
+  /** Parejas de ejercicios seguidos que se hacen en biserie: [clave A, clave B]. */
+  pairs?: [string, string][];
+  /** Grupos de la rutina que se hacen como ejercicios normales. */
+  split?: string[];
 }
 
 /* ---------- Registros (todos llevan user_id) ---------- */

@@ -63,26 +63,39 @@ export const sameDay = (a: string | number | Date, b: string | number | Date) =>
 };
 
 export const restText = (s: number) => (s <= 120 ? `${s} s` : s % 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s / 60} min`);
-export const rangeText = (ex: Exercise) => `${ex.reps.min}${ex.reps.max !== ex.reps.min ? '-' + ex.reps.max : ''}${ex.unit === 's' ? ' s' : ''}`;
+/** Ejercicio por tiempo (segundos o minutos): se anota la duración, no repeticiones. */
+export const isTimed = (ex: Pick<Exercise, 'unit'>) => ex.unit !== 'reps';
+/** ' s', ' min' o '' (repeticiones). */
+export const unitSuffix = (ex: Pick<Exercise, 'unit'>) => (ex.unit === 's' ? ' s' : ex.unit === 'min' ? ' min' : '');
+export const unitWord = (ex: Pick<Exercise, 'unit'>) => (ex.unit === 's' ? 'segundos' : ex.unit === 'min' ? 'minutos' : 'repeticiones');
+/** Máximo que se puede anotar en una serie. */
+export const maxReps = (ex: Pick<Exercise, 'unit'>) => (ex.unit === 's' ? 600 : ex.unit === 'min' ? 120 : 50);
+export const rangeText = (ex: Exercise) => `${ex.reps.min}${ex.reps.max !== ex.reps.min ? '-' + ex.reps.max : ''}${unitSuffix(ex)}`;
 export const targetText = (ex: Exercise) => `${ex.sets} × ${rangeText(ex)}${ex.perSide ? ' por lado' : ''}`;
-export const repLabel = (ex: Exercise) => (ex.unit === 's' ? 'Seg' : 'Reps');
+export const repLabel = (ex: Exercise) => (ex.unit === 's' ? 'Seg' : ex.unit === 'min' ? 'Min' : 'Reps');
 /** Primer valor del RIR objetivo: '2-3' → '2'. */
 export const rirFirst = (ex: Exercise) => String(ex.rir).split('-')[0];
 
 export const kg = (v: number) => `${fmtNum(v)} kg`;
 
+type LoadOf = Pick<Exercise, 'load'> | null | undefined;
+/** Unidad de la carga del ejercicio: kg o bloques de la máquina. */
+export const loadUnit = (ex: LoadOf) => (ex?.load === 'bloques' ? 'bloques' : 'kg');
+/** "40 kg", "4 bloques", "1 bloque". */
+export const loadText = (v: number, ex: LoadOf) => (ex?.load === 'bloques' ? `${fmtNum(v)} ${v === 1 ? 'bloque' : 'bloques'}` : kg(v));
+
 /** "40 kg" o "40–42,5 kg" si el peso cambió entre series. */
-export function weightRange(weights: number[]): string {
+export function weightRange(weights: number[], ex?: LoadOf): string {
   const w = weights.filter(x => x > 0);
   if (!w.length) return 'Sin carga';
   const mn = Math.min(...w), mx = Math.max(...w);
-  return mn === mx ? kg(mx) : `${fmtNum(mn)}–${fmtNum(mx)} kg`;
+  return mn === mx ? loadText(mx, ex) : `${fmtNum(mn)}–${fmtNum(mx)} ${loadUnit(ex)}`;
 }
 
 /** "40 kg × 12, RIR 2" */
-export function setText(ex: Pick<Exercise, 'unit'>, s: { weight: number | null; reps: number; rir: number | null }): string {
-  const w = s.weight ? `${fmtNum(s.weight)} kg × ` : '';
-  const unit = ex.unit === 's' ? ' s' : '';
+export function setText(ex: Pick<Exercise, 'unit' | 'load'>, s: { weight: number | null; reps: number; rir: number | null }): string {
+  const w = s.weight ? `${loadText(s.weight, ex)} × ` : '';
+  const unit = unitSuffix(ex);
   const rir = s.rir != null ? `, RIR ${fmtNum(s.rir)}` : '';
   return `${w}${s.reps}${unit}${rir}`;
 }

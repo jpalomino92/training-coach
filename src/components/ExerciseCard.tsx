@@ -50,6 +50,12 @@ export interface ExerciseCardProps {
   feel?: Feel;
   note: string;
   next?: Exercise | null;
+  /** En una biserie: aún no toca su serie ("después de Remo", "en la siguiente vuelta"). */
+  waitFor?: string;
+  /** Texto del descanso si no es el del ejercicio (p. ej. "Sin descanso" dentro de una biserie). */
+  restLabel?: string;
+  /** Acción de biserie: hacerlo junto al siguiente ejercicio o volver al grupo de la rutina. */
+  superset?: { label: string; onClick(): void };
   onRecord(index: number, v: { weight: number | null; reps: number; rir: number | null }, mode: 'new' | 'edit'): Promise<WorkoutSet | null>;
   onDelete(set: WorkoutSet): Promise<void>;
   onFeel(v: Feel | null): void;
@@ -78,6 +84,7 @@ export function ExerciseCard(p: ExerciseCardProps) {
 
   const rows = Array.from({ length: ex.sets }, (_, i) => {
     const saved = byIndex.get(i);
+    if (i === current && !saved && editing == null && p.waitFor) return <SetPending key={`w${i}`} index={i} wait={p.waitFor} />;
     if (i === current) {
       const mode = saved ? 'edit' : 'new';
       const initial = saved ? draftFrom(saved) : draftFrom(prefillFor(ex, i, sets, last));
@@ -114,8 +121,8 @@ export function ExerciseCard(p: ExerciseCardProps) {
       {!complete && (
         <div className="chips">
           <span className="chip key">{targetText(ex)}</span>
-          <span className="chip">RIR {ex.rir}</span>
-          <span className="chip"><Icon name="clock" />Descanso {restText(p.rest)}</span>
+          {ex.rir && <span className="chip">RIR {ex.rir}</span>}
+          <span className="chip"><Icon name="clock" />{p.restLabel ?? `Descanso ${restText(p.rest)}`}</span>
           <span className="chip">{ex.muscle}</span>
         </div>
       )}
@@ -134,6 +141,12 @@ export function ExerciseCard(p: ExerciseCardProps) {
               <Icon name="rutina" />¿Máquina ocupada? Hacer la alternativa: {p.alternative.altName}
             </button>
           )}
+        </div>
+      )}
+
+      {!complete && p.superset && (
+        <div className="alt-switch">
+          <button type="button" className="btn btn-link" onClick={p.superset.onClick}><Icon name="link" />{p.superset.label}</button>
         </div>
       )}
 

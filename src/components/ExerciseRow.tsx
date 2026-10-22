@@ -1,5 +1,5 @@
 /* Fila plegada de 72 px en Hoy (siguiente, empezada o hecha). Tocarla abre el ejercicio. */
-import { fmtNum, targetText } from '../domain/format';
+import { isTimed, loadText, targetText } from '../domain/format';
 import type { Exercise, Feel, WorkoutSet } from '../domain/types';
 import { ExerciseIllustration } from './ExerciseIllustration';
 import { FEEL_OPTIONS } from './FeelPicker';
@@ -18,9 +18,9 @@ export function ExerciseRow({ ex, number, sets, feel, onOpen }: Props) {
   const top = Math.max(0, ...sets.map(s => s.weight || 0));
   const feelLabel = FEEL_OPTIONS.find(o => o.value === feel)?.short;
   let sub: string;
-  if (done) sub = ['✓ ' + `${sets.length} de ${ex.sets} series`, top > 0 ? `${fmtNum(top)} kg` : '', feelLabel || ''].filter(Boolean).join(' · ');
+  if (done) sub = ['✓ ' + `${sets.length} de ${ex.sets} series`, top > 0 ? loadText(top, ex) : '', feelLabel || ''].filter(Boolean).join(' · ');
   else if (sets.length) sub = `◐ ${sets.length} de ${ex.sets} series`;
-  else sub = `${targetText(ex)}${ex.unit === 's' ? '' : ` · RIR ${ex.rir}`}`;
+  else sub = `${targetText(ex)}${isTimed(ex) || !ex.rir ? '' : ` · RIR ${ex.rir}`}`;
   return (
     <button type="button" className={`xrow${done ? ' done' : sets.length ? ' part' : ''}`} onClick={onOpen} aria-label={`${number}. ${ex.name}. ${sub.replace('✓', 'Hecho:').replace('◐', 'Empezado:')}`}>
       {!done && <span className="n" aria-hidden="true">{number}</span>}

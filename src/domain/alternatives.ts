@@ -23,7 +23,8 @@ export function altExercise(ex: Exercise): Exercise {
     alt: ex.name,
     // La técnica y la precaución son del ejercicio original: no se trasladan
     cue: '',
-    warn: ''
+    warn: '',
+    videoUrl: undefined
   };
 }
 

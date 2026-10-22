@@ -8,9 +8,11 @@ interface Props {
   children: ReactNode;
   /** Acción de la cabecera (por defecto "Cancelar"). */
   closeLabel?: string;
+  /** Clase extra para variantes (p. ej. "celebrate", a pantalla completa). */
+  className?: string;
 }
 
-export function Sheet({ title, onClose, children, closeLabel = 'Cancelar' }: Props) {
+export function Sheet({ title, onClose, children, closeLabel = 'Cancelar', className }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const onCloseRef = useRef(onClose);
@@ -43,7 +45,7 @@ export function Sheet({ title, onClose, children, closeLabel = 'Cancelar' }: Pro
   return createPortal(
     <>
       <div className="scrim" onClick={onClose} aria-hidden="true" />
-      <div ref={ref} className="sheet" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <div ref={ref} className={className ? `sheet ${className}` : 'sheet'} role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <span className="grab" aria-hidden="true" />
         <div className="hd">
           <h2 id={titleId} className="h2">{title}</h2>

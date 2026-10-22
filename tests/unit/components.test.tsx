@@ -72,7 +72,7 @@ describe('componentes', () => {
   it('perfil inicial: la rutina de 56 años exige marcar el aviso con su texto literal', async () => {
     const user = userEvent.setup();
     render(<App backend={backend()} />);
-    await signUpAndOnboard(user, /Fuerza segura/);
+    await signUpAndOnboard(user, /Rutina del especialista/);
     const start = screen.getByRole('button', { name: 'Empezar' });
     expect(start).toHaveAttribute('aria-disabled', 'true');
     expect(start).toHaveAccessibleDescription('Marca la casilla del aviso para continuar');
@@ -102,5 +102,36 @@ describe('componentes', () => {
     // La siguiente serie llega rellenada con la anterior de hoy
     expect(within(card).getByLabelText('Peso kg')).toHaveValue('80');
     expect(screen.getByText(/En progreso · 1 de 23 series/)).toBeInTheDocument();
+  });
+
+  it('Hoy: en un circuito se alternan las series y el descanso llega al terminar la vuelta', async () => {
+    const user = userEvent.setup();
+    render(<App backend={backend()} />);
+    await signUpAndOnboard(user, /Rutina del especialista/);
+    await user.click(screen.getByRole('checkbox', { name: /He leído el aviso/ }));
+    await user.click(screen.getByRole('button', { name: 'Empezar' }));
+    await user.click(await screen.findByRole('button', { name: /^3\. Rotación\./ }));
+    const block = screen.getByRole('region', { name: /^Circuito: Rotación y Gato y vaca/ });
+    const rotation = within(block).getByRole('article', { name: 'Rotación' });
+    const catCow = within(block).getByRole('article', { name: 'Gato y vaca' });
+    // Sin peso: solo repeticiones. El segundo ejercicio espera al primero
+    expect(within(rotation).queryByLabelText('Peso kg')).not.toBeInTheDocument();
+    expect(within(catCow).getByText('Serie 1 · después de Rotación')).toBeInTheDocument();
+    await user.type(within(rotation).getByLabelText('Reps'), '15');
+    await user.click(within(rotation).getByRole('button', { name: /Completar serie/ }));
+    // Misma vuelta: sin descanso, se habilita el siguiente
+    expect(await within(catCow).findByRole('form', { name: 'Serie 1 de 3' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Temporizador de descanso' })).not.toBeInTheDocument();
+    expect(within(rotation).getByText('Serie 2 · en la siguiente vuelta')).toBeInTheDocument();
+    expect(within(block).getByRole('article', { name: 'Extensión' })).toHaveTextContent('Serie 1 · después de Gato y vaca');
+    for (const name of ['Gato y vaca', 'Extensión']) {
+      const card = within(block).getByRole('article', { name });
+      await user.type(within(card).getByLabelText('Reps'), '10');
+      await user.click(within(card).getByRole('button', { name: /Completar serie/ }));
+    }
+    const flex = within(block).getByRole('article', { name: 'Flexión' });
+    await user.type(await within(flex).findByLabelText('Seg'), '10');
+    await user.click(within(flex).getByRole('button', { name: /Completar serie/ }));
+    expect(await screen.findByRole('region', { name: 'Temporizador de descanso' })).toHaveTextContent('Descanso · luego vuelta 2: Rotación');
   });
 });

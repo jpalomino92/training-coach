@@ -7,7 +7,7 @@ import { Icon } from '../../components/Icon';
 import { streak, weeklyCounts, weeklyGoal } from '../../domain/consistency';
 import { fmtDate, fmtNum, fmtWeekdayShort } from '../../domain/format';
 import { builtinLookup, getProgram } from '../../domain/routines';
-import { fmtMinutes, fmtThousands, workoutSummary } from '../../domain/summary';
+import { fmtMinutes, volumeText, workoutSummary } from '../../domain/summary';
 import type { Program, ProgramLookup, UserData } from '../../domain/types';
 import { byStartDesc } from '../../domain/workout';
 import type { AthleteRow } from '../../services/coach';
@@ -131,7 +131,7 @@ export function AthleteDetail({ athlete, programs, onClose, onChanged, onRemoved
                         <span className="tx"><b>{fmtWeekdayShort(w.completed_at || w.started_at)}</b><span className="sm muted">{d ? `${d.name} — ${d.focus}` : w.day_id}{p ? ` · ${p.shortName}` : ''}</span></span>
                       </div>
                       <p className="sm">
-                        {s.sets} de {s.total} series{s.volume > 0 && ` · ${fmtThousands(s.volume)} kg`}{s.minutes != null && ` · ${fmtMinutes(s.minutes)}`}
+                        {s.sets} de {s.total} series{s.volume > 0 && ` · ${volumeText(s.volume, s.approx)}`}{s.minutes != null && ` · ${fmtMinutes(s.minutes)}`}
                         {s.records.length > 0 && ` · ${s.records.length === 1 ? '1 récord' : `${s.records.length} récords`}`}
                       </p>
                       {s.pain.length > 0 && <p className="sum-pain"><Icon name="alert" /><span>Marcó dolor en {s.pain.join(', ')}.</span></p>}

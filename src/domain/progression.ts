@@ -3,7 +3,7 @@
    Nunca cambia pesos por sí sola: solo devuelve una sugerencia
    de texto. La persona siempre decide el peso de la sesión.
    ========================================================== */
-import { fmtNum, kg, round2 } from './format';
+import { fmtNum, isTimed, loadText, round2, unitSuffix, unitWord as unitWordOf } from './format';
 import type { Exercise, Feel, Program } from './types';
 
 export type SuggestionLevel = 'none' | 'up' | 'hold' | 'down' | 'pain';
@@ -59,15 +59,22 @@ const DEFAULT_CFG = { minRirToProgress: 1, cautious: false, step: '' };
  */
 export function suggest(ex: Exercise, sets: SetLike[] | null | undefined, program: Pick<Program, 'progression'>, feel?: Feel): Suggestion {
   const cfg = program.progression || DEFAULT_CFG;
-  const unitWord = ex.unit === 's' ? 'segundos' : 'repeticiones';
+  const unitWord = unitWordOf(ex);
+  const kg = (v: number) => loadText(v, ex);
 
   if (!sets || !sets.length) {
+    const range = ex.reps.min === ex.reps.max ? String(ex.reps.min) : `${ex.reps.min}-${ex.reps.max}`;
+    const what = ex.load === 'bloques' ? 'los bloques con los que' : 'un peso con el que';
     return {
       level: 'none',
       action: 'Primera vez.',
-      reason: ex.unit === 's'
-        ? `Elige una versión con la que aguantes ${ex.reps.min}-${ex.reps.max} segundos con buena técnica y sin dolor.`
-        : `Elige un peso con el que puedas hacer ${ex.reps.min}-${ex.reps.max} repeticiones y te queden ${ex.rir.split('-')[0]} en reserva.`
+      reason: ex.unit === 'min'
+        ? `Haz ${range} minutos a un ritmo cómodo.`
+        : isTimed(ex)
+          ? `Elige una versión con la que aguantes ${range} ${unitWord} con buena técnica y sin dolor.`
+          : ex.noWeight || !ex.rir
+            ? `Haz ${range} repeticiones con buena técnica y sin dolor.`
+            : `Elige ${what} puedas hacer ${range} repeticiones y te queden ${ex.rir.split('-')[0]} en reserva.`
     };
   }
 
@@ -87,13 +94,13 @@ export function suggest(ex: Exercise, sets: SetLike[] | null | undefined, progra
   const up = round2(top + step);
   const down = Math.max(0, round2(top - step));
   const repsText = sum.reps.join(' / ');
-  const lastText = `${repsText}${ex.unit === 's' ? ' s' : ''}${sum.minRir !== null ? ` con RIR ${fmtNum(sum.minRir)}` : ''}`;
+  const lastText = `${repsText}${unitSuffix(ex)}${sum.minRir !== null ? ` con RIR ${fmtNum(sum.minRir)}` : ''}`;
   const rirKnown = sum.minRir !== null;
   const allTop = sets.length >= ex.sets && sets.every(x => Number(x.reps) >= ex.reps.max);
   const anyLow = sets.some(x => Number(x.reps) < ex.reps.min);
   const failAtMin = sets.find(x => x.rir === 0 && Number(x.reps) <= ex.reps.min);
   // En los ejercicios por tiempo se va al máximo: llegar al tope de segundos basta para progresar (salvo en rutinas prudentes)
-  const rirOk = (ex.unit === 's' && !cfg.cautious) || (rirKnown && sum.minRir! >= cfg.minRirToProgress);
+  const rirOk = (isTimed(ex) && !cfg.cautious) || (rirKnown && sum.minRir! >= cfg.minRirToProgress);
   const tooHard = cfg.cautious && rirKnown && sum.minRir! < 2;
   const hold = noLoad ? 'Mantén la dificultad.' : `Mantén ${kg(top)}.`;
 
@@ -108,7 +115,7 @@ export function suggest(ex: Exercise, sets: SetLike[] | null | undefined, progra
         : { level: 'up', action: 'Aumenta un poco la dificultad o el tiempo.', reason: `La última vez hiciste ${lastText}.` };
     }
     return cfg.cautious
-      ? { level: 'up', action: `Podrías subir a ${kg(up)}, solo si no hubo dolor.`, reason: `Sube solo el incremento mínimo (${fmtNum(step)} kg). La última vez hiciste ${lastText}.`, weight: up }
+      ? { level: 'up', action: `Podrías subir a ${kg(up)}, solo si no hubo dolor.`, reason: `Sube solo el incremento mínimo (${kg(step)}). La última vez hiciste ${lastText}.`, weight: up }
       : { level: 'up', action: `Sube a ${kg(up)}.`, reason: `La última vez hiciste ${lastText}.`, weight: up };
   }
 

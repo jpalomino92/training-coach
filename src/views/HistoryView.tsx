@@ -6,11 +6,11 @@ import { DiscBadge } from '../components/DayDisc';
 import { ExerciseIllustration } from '../components/ExerciseIllustration';
 import { MonthCalendar } from '../components/MonthCalendar';
 import { Icon } from '../components/Icon';
-import { fmtMonthYear, fmtNum, fmtWeekdayShort, weightRange } from '../domain/format';
+import { fmtMonthYear, fmtNum, fmtWeekdayShort, unitSuffix, weightRange } from '../domain/format';
 import { baseKey, resolveExercise } from '../domain/alternatives';
 import type { ProgramLookup, Workout, WorkoutSet } from '../domain/types';
 import { recordSetIds } from '../domain/records';
-import { fmtMinutes, fmtThousands, workoutSummary } from '../domain/summary';
+import { fmtMinutes, volumeText, workoutSummary } from '../domain/summary';
 import { byStartDesc, setsOf, totalSets } from '../domain/workout';
 import { useApp } from '../state/AppContext';
 
@@ -73,7 +73,7 @@ function HistoryCard({ w, sets, open, onToggle, records }: { w: Workout; sets: W
         <div id={`h-${w.id}`} className="stack-sm">
           {(() => {
             const s = workoutSummary(data, w, lookup);
-            const bits = [s.minutes != null ? fmtMinutes(s.minutes) : '', s.volume > 0 ? `${fmtThousands(s.volume)} kg de volumen` : ''].filter(Boolean);
+            const bits = [s.minutes != null ? fmtMinutes(s.minutes) : '', s.volume > 0 ? `${volumeText(s.volume, s.approx)} de volumen` : ''].filter(Boolean);
             return bits.length ? <p className="sm muted">{bits.join(' · ')}</p> : null;
           })()}
           {w.notes && <p className="hist-note"><b>Nota:</b> {w.notes}</p>}
@@ -81,11 +81,11 @@ function HistoryCard({ w, sets, open, onToggle, records }: { w: Workout; sets: W
             {keys.map(k => {
               const ex = resolveExercise(pr, k);
               const ss = sets.filter(s => s.exercise_key === k).sort((a, b) => a.set_index - b.set_index);
-              const unit = ex?.unit === 's' ? ' s' : '';
+              const unit = ex ? unitSuffix(ex) : '';
               const weights = ss.map(s => s.weight || 0);
               const lastRir = [...ss].reverse().find(s => s.rir != null)?.rir;
               const line = [
-                `${weights.some(x => x > 0) ? `${weightRange(weights)} × ` : ''}${ss.map(s => s.reps).join(' / ')}${unit}${ex?.perSide ? ' por lado' : ''}`,
+                `${weights.some(x => x > 0) ? `${weightRange(weights, ex)} × ` : ''}${ss.map(s => s.reps).join(' / ')}${unit}${ex?.perSide ? ' por lado' : ''}`,
                 lastRir != null ? `RIR ${fmtNum(lastRir)}` : ''
               ].filter(Boolean).join(' · ');
               return (

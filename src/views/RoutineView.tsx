@@ -8,6 +8,7 @@ import { Icon, type IconName } from '../components/Icon';
 import { restText, targetText } from '../domain/format';
 import { weekPlanFor } from '../domain/prefs';
 import { PAIN_GUIDE } from '../domain/routines';
+import { dayUnits, isGroup, supersetPrefsFor, unitLabel } from '../domain/supersets';
 import { totalSets } from '../domain/workout';
 import { useApp } from '../state/AppContext';
 
@@ -113,6 +114,11 @@ export function RoutineView() {
           </button>
         );
         if (!open) return <div key={d.id}>{head}</div>;
+        // "Biserie 1/2" junto a cada ejercicio que va en biserie o circuito
+        const groupTag = new Map<string, string>();
+        for (const u of dayUnits(d, supersetPrefsFor(prefs, program.id, d.id))) {
+          if (isGroup(u)) u.exercises.forEach((e, i) => groupTag.set(e.key, `${unitLabel(u)} ${i + 1}/${u.exercises.length}`));
+        }
         return (
           <section key={d.id} className="dcard" data-day={d.color}>
             {head}
@@ -120,7 +126,7 @@ export function RoutineView() {
               {d.exercises.map(ex => (
                 <li key={ex.key}>
                   <ExerciseIllustration pose={ex.pose} size="xs" imageSrc={ex.gifUrl} />
-                  <span>{ex.name}<br /><span className="xs muted">RIR {ex.rir} · descanso {restText(ex.rest)}</span></span>
+                  <span>{ex.name}<br /><span className="xs muted">{groupTag.has(ex.key) && <b>{groupTag.get(ex.key)} · </b>}{ex.rir && `RIR ${ex.rir} · `}descanso {restText(ex.rest)}</span></span>
                   <span className="tgt">{targetText(ex)}</span>
                 </li>
               ))}

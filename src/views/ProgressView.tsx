@@ -3,14 +3,14 @@ import { useState } from 'react';
 import { Button } from '../components/Button';
 import { Sparkline } from '../components/Charts';
 import { ExerciseIllustration } from '../components/ExerciseIllustration';
-import { fmtDate, fmtNum, DAY_MS, toDate } from '../domain/format';
+import { fmtDate, fmtNum, DAY_MS, loadUnit, toDate, unitSuffix } from '../domain/format';
 import { streak, weeklyCounts, weeklyGoal } from '../domain/consistency';
 import { exerciseProgress, type ExerciseProgress } from '../domain/workout';
 import { useApp } from '../state/AppContext';
 import { BodyWeightPanel } from './BodyWeightPanel';
 
 function ProgressCard({ p }: { p: ExerciseProgress }) {
-  const unit = p.loaded ? ' kg' : p.ex.unit === 's' ? ' s' : ' reps';
+  const unit = p.loaded ? ` ${loadUnit(p.ex)}` : unitSuffix(p.ex) || ' reps';
   const v = (n: number) => `${fmtNum(n)}${unit}`;
   const first = p.weeks[0], last = p.weeks[p.weeks.length - 1];
   const trend = last[1] > first[1] ? 'sube' : last[1] < first[1] ? 'baja' : 'se mantiene';

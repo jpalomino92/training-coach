@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures';
-import { completeSet, createUser, ROUTINE, skipRest, tab } from './helpers';
+import { completeSet, createUser, finishWorkout, ROUTINE, skipRest, tab } from './helpers';
 
 async function finishWithSets(page: import('@playwright/test').Page, weight: string, n = 4) {
   for (let i = 0; i < n; i++) {
@@ -7,7 +7,7 @@ async function finishWithSets(page: import('@playwright/test').Page, weight: str
     await skipRest(page);
   }
   await page.getByRole('button', { name: 'Terminar entrenamiento' }).click();
-  await page.getByRole('button', { name: 'Terminar', exact: true }).click();
+  await finishWorkout(page);
 }
 
 test('historial: detalle por ejercicio y borrado con confirmación dentro de la tarjeta', async ({ page }) => {

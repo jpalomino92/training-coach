@@ -59,5 +59,5 @@ test('al cambiar a la rutina de 56 años desde Editar perfil hay que aceptar el 
   await expect(save).toHaveAttribute('aria-disabled', 'true');
   await page.getByRole('checkbox', { name: ACK }).check();
   await save.click();
-  await expect(page.getByText('Fuerza segura · 3 días')).toBeVisible();
+  await expect(page.getByText('Rutina del especialista · 4 días')).toBeVisible();
 });

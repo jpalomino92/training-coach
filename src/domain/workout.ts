@@ -1,7 +1,7 @@
 /* Selectores puros sobre los datos del usuario. No dependen de React. */
 import { altExercise, altKey } from './alternatives';
 import { weekStart } from './consistency';
-import { DAY_MS, sameDay, toDate } from './format';
+import { DAY_MS, isTimed, sameDay, toDate } from './format';
 import { findExercise } from './routines';
 import { summarize } from './progression';
 import type { Exercise, Program, UserData, Workout, WorkoutDay, WorkoutSet } from './types';
@@ -134,7 +134,7 @@ export function exerciseProgress(data: UserData, program: Program, startDate: st
         sessions.push({ week: weekNumber(w.completed_at || w.started_at, startDate), top: sum.topWeight, best: Math.max(...sum.reps) });
       }
       if (!sessions.length) continue;
-      const loaded = ex.unit !== 's' && sessions.some(s => s.top > 0);
+      const loaded = !isTimed(ex) && sessions.some(s => s.top > 0);
       const metric = (s: { top: number; best: number }) => (loaded ? s.top : s.best);
       const weeks = new Map<number, number>();
       sessions.forEach(s => weeks.set(s.week, Math.max(weeks.get(s.week) ?? 0, metric(s))));

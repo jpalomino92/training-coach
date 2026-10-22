@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures';
-import { completeSet, createUser, PASSWORD, ROUTINE, signIn, signOut, skipRest, tab } from './helpers';
+import { completeSet, createUser, finishWorkout, PASSWORD, ROUTINE, signIn, signOut, skipRest, tab } from './helpers';
 
 test('descanso personalizado: el temporizador usa 2 min en básicos y 1 min en accesorios', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-09-21T10:00:00') });
@@ -91,7 +91,7 @@ test('récord personal al superar la mejor marca y constancia semanal', async ({
   await expect(page.getByText(/Nuevo récord/)).toHaveCount(0); // la primera vez no hay récord
   await skipRest(page);
   await page.getByRole('button', { name: 'Terminar entrenamiento' }).click();
-  await page.getByRole('button', { name: 'Terminar', exact: true }).click();
+  await finishWorkout(page);
   await expect(page.getByText('Esta semana: 1 de 4')).toBeVisible();
 
   // La semana siguiente, mismo día de la rutina
@@ -103,7 +103,7 @@ test('récord personal al superar la mejor marca y constancia semanal', async ({
   await expect(page.getByRole('article', { name: 'Sentadilla con barra' }).getByRole('status')).toContainText('Nuevo récord de peso: 82,5 kg');
   await skipRest(page);
   await page.getByRole('button', { name: 'Terminar entrenamiento' }).click();
-  await page.getByRole('button', { name: 'Terminar', exact: true }).click();
+  await finishWorkout(page);
 
   await tab(page, 'Historial');
   await page.getByRole('button', { name: /Mié 23\/09/ }).click();

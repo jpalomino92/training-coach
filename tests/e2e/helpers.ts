@@ -6,7 +6,7 @@ export const PASSWORD = 'contraseña-larga-123';
 export const ROUTINE = {
   male: /Torso \/ Pierna/,
   female: /Recomposición/,
-  safe: /Fuerza segura/
+  safe: /Rutina del especialista/
 };
 
 export async function signUp(page: Page, email: string) {
@@ -54,10 +54,26 @@ export const currentSet = (page: Page) => page.getByRole('form', { name: /^Serie
 export async function completeSet(page: Page, v: { weight?: string; reps?: string; rir?: string } = {}) {
   const form = currentSet(page);
   await expect(form).toBeVisible();
-  if (v.weight != null) await form.getByLabel('Peso kg').fill(v.weight);
-  if (v.reps != null) await form.getByLabel(/^(Reps|Seg)$/).fill(v.reps);
-  if (v.rir != null) await form.getByLabel('RIR', { exact: true }).fill(v.rir);
+  // Los ejercicios sin carga (movilidad, cardio) no piden el peso; las máquinas de placas, en bloques
+  const weight = form.getByLabel(/^(Peso kg|Bloques)$/);
+  if (v.weight != null && await weight.count()) await weight.fill(v.weight);
+  if (v.reps != null) await form.getByLabel(/^(Reps|Seg|Min)$/).fill(v.reps);
+  const rir = form.getByLabel('RIR', { exact: true });
+  if (v.rir != null && await rir.count()) await rir.fill(v.rir);
   await form.getByRole('button', { name: 'Completar serie' }).click();
+}
+
+/** Cierra la ventana de entrenamiento completado si está abierta. */
+export async function closeDone(page: Page) {
+  const done = page.getByRole('dialog', { name: 'Entrenamiento completado' });
+  if (await done.isVisible()) await done.getByRole('button', { name: 'Listo' }).click();
+}
+
+/** Confirma "Terminar" con series pendientes y cierra la ventana de resumen. */
+export async function finishWorkout(page: Page) {
+  await page.getByRole('button', { name: 'Terminar', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Entrenamiento completado' })).toBeVisible();
+  await closeDone(page);
 }
 
 /** Cierra el temporizador de descanso si está abierto. */
@@ -67,11 +83,11 @@ export async function skipRest(page: Page) {
 }
 
 /** Completa todas las series del día elegido (rellena reps y RIR si vienen vacíos). */
-export async function completeWholeDay(page: Page, v = { weight: '20', reps: '10', rir: '2' }) {
-  for (let guard = 0; guard < 60; guard++) {
+export async function completeWholeDay(page: Page, v = { weight: '20', reps: '10', rir: '2' }, opts: { keepOpen?: boolean } = {}) {
+  for (let guard = 0; guard < 120; guard++) {
     const form = currentSet(page);
     if (await form.count()) {
-      const reps = form.getByLabel(/^(Reps|Seg)$/);
+      const reps = form.getByLabel(/^(Reps|Seg|Min)$/);
       const empty = (await reps.inputValue()) === '';
       await completeSet(page, empty ? v : {});
       await skipRest(page);
@@ -79,6 +95,7 @@ export async function completeWholeDay(page: Page, v = { weight: '20', reps: '10
     }
     const next = page.getByRole('button', { name: /^Siguiente:/ });
     if (await next.count()) { await next.click(); continue; }
+    if (!opts.keepOpen) await closeDone(page);
     return;
   }
   throw new Error('No se pudo completar el día');

@@ -73,7 +73,7 @@ describe('constancia semanal', () => {
   it('objetivo = días no opcionales de la rutina', () => {
     expect(weeklyGoal(routinePrograms.maleUpperLower)).toBe(4);
     expect(weeklyGoal(routinePrograms.femaleFatLossMuscle)).toBe(5);
-    expect(weeklyGoal(routinePrograms.femaleMenopauseSafeStrength)).toBe(3);
+    expect(weeklyGoal(routinePrograms.femaleMenopauseSafeStrength)).toBe(4);
   });
   it('cuenta entrenamientos completados por semana y la racha', () => {
     const ws = [

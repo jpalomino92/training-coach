@@ -3,29 +3,29 @@
    Cada programa es solo DATOS. La app no tiene lógica específica
    de ningún programa: para añadir una rutina nueva basta con
    añadir una entrada a routinePrograms.
-   Contenido copiado literalmente del prototipo (legacy/js/data/routines.js);
-   solo se añade weightStep.
+   Las dos primeras están copiadas del prototipo (legacy/js/data/routines.js);
+   la tercera es la rutina pautada por el especialista (ejercicios mama.xlsx).
    ========================================================== */
 import type { Exercise, Program } from './types';
 
-type Extra = Partial<Pick<Exercise, 'perSide' | 'warn' | 'compound' | 'weightStep'>>;
+type Extra = Partial<Pick<Exercise, 'perSide' | 'warn' | 'compound' | 'weightStep' | 'load' | 'noWeight' | 'group' | 'videoUrl'>>;
 
 /** Paso de peso por defecto (kg) para los botones − / +. */
 export const DEFAULT_WEIGHT_STEP = 2.5;
 
 /**
  * E(key, nombre, series, rango, rir, descanso(s), pose, músculo, técnica, alternativa, extra)
- * rango: '8-12' (repeticiones) o '30-45s' (segundos)
- * extra: { perSide, warn, compound, weightStep }
+ * rango: '8-12' (repeticiones), '30-45s' (segundos) o '7min' (minutos)
+ * extra: { perSide, warn, compound, weightStep, load, noWeight, group, videoUrl }
  * `key` identifica el ejercicio para el historial y el progreso.
  */
 function E(key: string, name: string, sets: number, range: string, rir: string, rest: number, pose: string, muscle: string, cue: string, alt: string, extra?: Extra): Exercise {
-  const isTime = /s$/.test(range);
-  const [a, b] = range.replace('s', '').split('-').map(Number);
+  const unit = /min$/.test(range) ? 'min' : /s$/.test(range) ? 's' : 'reps';
+  const [a, b] = range.replace(/min$|s$/, '').split('-').map(Number);
   return {
     key, name, sets,
     reps: { min: a, max: b || a },
-    unit: isTime ? 's' : 'reps',
+    unit,
     rir, rest, pose, muscle, cue, alt,
     perSide: false, warn: '', compound: false, weightStep: DEFAULT_WEIGHT_STEP,
     ...extra
@@ -37,6 +37,58 @@ export const PAIN_GUIDE = {
   stop: 'Señales para detenerte: dolor articular, punzante o que aumenta con cada repetición; dolor en la columna; dolor que se irradia a brazos o piernas; hormigueo, entumecimiento o pérdida de fuerza repentina.',
   action: 'Si aparece alguna señal de alarma, detén el ejercicio y no lo retomes hasta consultarlo con un profesional sanitario. Nunca entrenes a través de un dolor agudo.'
 };
+
+/* ---------- Rutina del especialista ---------- */
+
+/**
+ * Vídeos del especialista por número (columna "Video" del Excel).
+ * Pega el enlace de YouTube de cada uno: el ejercicio lo mostrará en "Ver vídeo del ejercicio".
+ */
+const SPECIALIST_VIDEOS: Record<number, string> = {
+  1: '', // Cardio en cinta
+  2: '', // Activación cardiovascular
+  3: '', // Circuito zona lumbar
+  4: '', // Leg station
+  5: '', // Prensa horizontal
+  6: '', // Patada en polea lateral y trasera
+  7: '', // Abducción inclinada
+  8: '', // Remo en polea baja
+  9: '', // Press de banco inclinado
+  10: '', // Remo bilateral
+  11: '', // Press vertical
+  12: '', // Banco Scott unilateral
+  13: '', // Push down
+  14: '', // Aducción escapular
+  15: '', // Zona lumbar en bosu
+  16: '', // Hiperextensión
+  17: '', // Movilidad de cadera y espalda baja
+  18: '', // Fascia móvil cadena posterior
+  19: '', // Flexibilidad cadena posterior
+  20: '', // Rotación abdominal
+  21: '', // Flexibilidad
+  22: '', // Leg curl
+  23: '', // Glúteo con banda
+  24: '', // Leg curl sentada
+  25: '', // Patada de glúteo en polea
+  26: '' // Dorsiflexión
+};
+const video = (n: number): Extra => (SPECIALIST_VIDEOS[n] ? { videoUrl: SPECIALIST_VIDEOS[n] } : {});
+/** Máquinas de placas: la carga se anota en bloques. */
+const BLOCKS: Extra = { load: 'bloques', weightStep: 1 };
+/** Cardio, movilidad y estiramientos: sin peso. */
+const NO_WEIGHT: Extra = { noWeight: true, weightStep: 1 };
+
+const walk = (range: string) =>
+  E('sp_walk', 'Caminata en cinta', 1, range, '', 60, 'farmer', 'Cardio', 'Cada 2 minutos cambia la inclinación de la cinta.', '', { ...NO_WEIGHT, ...video(1) });
+const activation = (sets: number) =>
+  E('sp_activation', 'Activación', sets, '12', '', 60, 'squat', 'Calentamiento', '12 repeticiones de cada movimiento del vídeo.', '', { ...NO_WEIGHT, ...video(2) });
+/** Circuito de zona lumbar: los cuatro ejercicios seguidos y descanso al terminar la vuelta. */
+const lumbarCircuit = (rounds: number, group: string): Exercise[] => [
+  E('sp_lumbar_rotation', 'Rotación', rounds, '15', '', 60, 'deadbug', 'Zona lumbar', '15 repeticiones en total, con el máximo rango de movimiento.', '', { ...NO_WEIGHT, group, ...video(3) }),
+  E('sp_cat_cow', 'Gato y vaca', rounds, '15', '', 60, 'plank', 'Zona lumbar', 'Repeticiones muy lentas y con gran rango de movimiento.', '', { ...NO_WEIGHT, group, ...video(3) }),
+  E('sp_lumbar_extension', 'Extensión', rounds, '10', '', 60, 'yraise', 'Zona lumbar', 'Repeticiones lentas, notando bien la posición de la espalda.', '', { ...NO_WEIGHT, group, ...video(3) }),
+  E('sp_lumbar_flex', 'Flexión', rounds, '10s', '', 60, 'rdl', 'Zona lumbar', 'Mantén 10 segundos por cada lado.', '', { ...NO_WEIGHT, perSide: true, group, ...video(3) })
+];
 
 export const routinePrograms: Record<string, Program> = {
 
@@ -183,18 +235,20 @@ export const routinePrograms: Record<string, Program> = {
   /* ------------------------------------------------------
      PERFIL 2 — Mujer de 56 años, menopausia, artrosis,
      antecedente de cirugía de columna.
-     Referencia: Etapa 1 Mujer, adaptada por seguridad
+     Rutina pautada por su especialista (4 sesiones). Sustituye
+     a "Fuerza segura"; se conserva el id para no perder el perfil.
+     Las cargas de las máquinas se anotan en bloques.
      ------------------------------------------------------ */
   femaleMenopauseSafeStrength: {
     id: 'femaleMenopauseSafeStrength',
-    name: 'Fuerza segura para preservar y ganar músculo',
-    shortName: 'Fuerza segura',
+    name: 'Rutina del especialista: fuerza, zona lumbar y movilidad',
+    shortName: 'Rutina del especialista',
     audience: 'Mujer',
-    level: 'Principiante o retomando',
-    daysPerWeek: '3',
-    description: 'Tres sesiones de cuerpo completo con máquinas, apoyos y poleas. Cada músculo se trabaja 2–3 veces por semana con cargas moderadas y técnica controlada, evitando carga sobre la columna.',
-    intensity: 'RIR 2–4. Nunca al fallo. En ejercicios nuevos o delicados, RIR 3–4 durante las primeras semanas.',
-    progression: { minRirToProgress: 2, cautious: true, step: 'el incremento mínimo disponible (1–2 kg o una placa)' },
+    level: 'Pautada por especialista',
+    daysPerWeek: '4',
+    description: 'Cuatro sesiones pautadas por tu especialista: tren inferior con énfasis en cuádriceps y aductores, tren superior, cardio con zona lumbar y flexibilidad, y tren inferior con énfasis en isquiosurales y glúteos.',
+    intensity: 'Usa los bloques, el peso y el ritmo que indica cada ejercicio. Termina cada serie con 2–3 repeticiones en reserva y nunca llegues al fallo.',
+    progression: { minRirToProgress: 2, cautious: true, step: 'el incremento mínimo disponible (1 bloque o 1 kg)' },
     safety: {
       requiresHealthNotice: true,
       ackText: 'He leído el aviso y revisaré esta rutina con mi médico o fisioterapeuta antes de empezar.',
@@ -203,42 +257,77 @@ export const routinePrograms: Record<string, Program> = {
         'Si aparece dolor agudo, irradiado, hormigueo, entumecimiento o síntomas neurológicos, detener el ejercicio y consultar a un profesional sanitario.'
       ],
       rules: [
-        'Calienta 5–8 min en bici estática o elíptica antes de cada sesión.',
-        'Esta rutina no incluye barra sobre los hombros, peso muerto con barra, flexiones de tronco con peso, giros con carga, saltos ni ejercicios de impacto.',
+        'Empieza siempre con el cardio y la activación de la sesión: son el calentamiento.',
+        'Sigue el vídeo de cada ejercicio y respeta el ritmo que marca (por ejemplo, subir en 3 segundos y bajar en 3).',
         'Trabaja siempre en un rango de movimiento cómodo y sin dolor articular.',
         'Respira de forma continua y no aguantes la respiración al empujar.'
       ]
     },
-    weekPlan: [['L', 'SA'], ['M', null], ['X', 'SB'], ['J', null], ['V', 'SC'], ['S', null], ['D', null]],
-    cardio: 'Caminar 30–45 min 3–4 veces por semana a un ritmo que te permita hablar (los días sin pesas son ideales). La bici estática y la elíptica son buenas opciones de bajo impacto. Evita saltar la soga y trotar salvo que tu profesional sanitario lo autorice.',
+    weekPlan: [['L', 'S1'], ['M', 'S2'], ['X', null], ['J', 'S3'], ['V', 'S4'], ['S', null], ['D', null]],
+    cardio: 'Cada sesión empieza con cardio suave (cinta, elíptica o bici). Los días de descanso puedes caminar 30–45 min a un ritmo que te permita hablar.',
     tips: [
+      'En las biseries y los circuitos haz una serie de cada ejercicio seguida y descansa al terminar la vuelta.',
+      '"5 lentas, 5 pausadas y 5 rápidas" significa hacer las 15 repeticiones seguidas cambiando el ritmo cada 5.',
       'El entrenamiento de fuerza puede contribuir a mantener la masa muscular y la salud ósea después de la menopausia.',
-      'Es normal empezar con cargas bajas. La constancia y la técnica generan el estímulo; la carga llega con las semanas.',
       'Consulta con tu médico cuánta proteína te conviene, sobre todo si tienes alguna condición renal.'
     ],
     days: [
-      { id: 'SA', name: 'Día A', focus: 'Pierna y tracción', color: 'red', exercises: [
-        E('leg_press', 'Prensa de piernas', 3, '10-12', '3', 120, 'legpress', 'Cuádriceps y glúteo', 'Baja solo hasta donde la pelvis y la zona lumbar siguen pegadas al respaldo. Empuja con todo el pie.', 'Sentarse y levantarse de un banco', { compound: true, warn: 'No hagas recorridos profundos si la zona lumbar se despega del respaldo o si notas dolor en rodilla o cadera.', weightStep: 1 }),
-        E('leg_curl_seated', 'Curl femoral sentado', 3, '10-12', '2-3', 90, 'legcurl', 'Isquiotibiales', 'Espalda apoyada en el respaldo. Flexiona y vuelve lento en 3 segundos.', 'Curl femoral con banda, sentada', { weightStep: 1 }),
-        E('lat_pulldown_neutral', 'Jalón al pecho agarre neutro', 3, '10-12', '2-3', 90, 'pullup', 'Dorsales', 'Sentada con los muslos sujetos. Lleva los codos hacia abajo sin echar el tronco atrás.', 'Jalón en máquina con apoyo de pecho', { compound: true, weightStep: 1 }),
-        E('machine_row_supported', 'Remo en máquina con apoyo de pecho', 3, '10-12', '2-3', 90, 'cablerow', 'Espalda media y alta', 'El apoyo de pecho quita carga a la zona lumbar. Lleva los codos atrás y junta las escápulas.', 'Remo sentado en polea con espalda erguida', { weightStep: 1 }),
-        E('abductor_machine', 'Abductores en máquina', 2, '12-15', '2-3', 60, 'abductor', 'Glúteo medio', 'Espalda apoyada. Abre controlado en un rango cómodo para la cadera.', 'Abducción con banda, sentada', { weightStep: 1 })
+      { id: 'S1', name: 'Sesión 1', focus: 'Tren inferior: cuádriceps y aductores', color: 'red', exercises: [
+        walk('7min'),
+        activation(3),
+        ...lumbarCircuit(3, 'S1-lumbar'),
+        E('sp_leg_station_uni', 'Leg station a una pierna', 3, '10', '2-3', 120, 'legext', 'Cuádriceps', 'Con 2 bloques. Sube en 3 segundos y baja en 3 segundos. Al terminar pasa sin descanso a la versión con las dos piernas.', '', { ...BLOCKS, perSide: true, group: 'S1-legstation', ...video(4) }),
+        E('sp_leg_station_bi', 'Leg station con las dos piernas', 3, '12', '2-3', 120, 'legext', 'Cuádriceps', 'Con 4 bloques, controlando la bajada.', '', { ...BLOCKS, group: 'S1-legstation', ...video(4) }),
+        E('sp_hpress_heavy', 'Prensa horizontal pesada', 3, '6', '2-3', 120, 'legpress', 'Cuádriceps y glúteo', 'Con 5 bloques. Al terminar baja el peso y sigue sin descanso con la parte ligera.', '', { ...BLOCKS, compound: true, group: 'S1-press', warn: 'Baja solo hasta donde la zona lumbar siga pegada al respaldo.', ...video(5) }),
+        E('sp_hpress_light', 'Prensa horizontal ligera', 3, '15', '2-3', 120, 'legpress', 'Cuádriceps y glúteo', 'Con 2 bloques, a un ritmo constante.', '', { ...BLOCKS, compound: true, group: 'S1-press', ...video(5) }),
+        E('sp_adductor', 'Aducción sentada', 3, '15', '2-3', 120, 'abductor', 'Aductores', 'Con 4 bloques. Al terminar mantén las piernas cerradas en isometría.', '', { ...BLOCKS, group: 'S1-adductor' }),
+        E('sp_adductor_iso', 'Aducción en isometría', 3, '30s', '', 120, 'abductor', 'Aductores', 'Aprieta y mantén las piernas cerradas sin moverte.', '', { ...BLOCKS, group: 'S1-adductor' }),
+        E('sp_cable_kick_back', 'Patada atrás en polea', 3, '12', '2-3', 120, 'kickback', 'Glúteo mayor', 'Con 2 bloques. Patada hacia atrás sin arquear la zona lumbar.', '', { ...BLOCKS, perSide: true, group: 'S1-kick', ...video(6) }),
+        E('sp_cable_kick_side', 'Patada lateral en polea', 3, '10', '2-3', 120, 'kickback', 'Glúteo medio', 'Con 1 bloque. Abre la pierna hacia el lado con el tronco quieto.', '', { ...BLOCKS, perSide: true, group: 'S1-kick', ...video(6) }),
+        E('sp_abduction_incline', 'Abducción inclinada', 3, '15', '2-3', 90, 'abductor', 'Glúteo medio', 'Con 5 bloques: 5 repeticiones lentas, 5 pausadas y 5 rápidas.', '', { ...BLOCKS, ...video(7) }),
+        E('sp_elliptical_end', 'Elíptica al finalizar', 1, '15min', '', 60, 'lunge', 'Cardio', 'A velocidad moderada y con buena respiración.', '', NO_WEIGHT)
       ]},
-      { id: 'SB', name: 'Día B', focus: 'Glúteo y empuje', color: 'blue', exercises: [
-        E('glute_bridge', 'Puente de glúteo', 3, '10-15', '3', 90, 'glutebridge', 'Glúteo mayor', 'Pies apoyados. Sube hasta alinear cadera y muslos apretando el glúteo, sin arquear la zona lumbar.', 'Hip thrust en máquina con carga ligera', { warn: 'Progresa de peso corporal a banda y después a un peso ligero sobre la cadera.', weightStep: 1 }),
-        E('box_squat', 'Sentadilla a banco con mancuerna', 3, '8-12', '3', 120, 'boxsquat', 'Cuádriceps y glúteo', 'Mancuerna ligera al pecho. Siéntate controlada en un banco alto y levántate empujando el suelo.', 'Prensa de piernas', { compound: true, warn: 'Usa un banco a la altura que no genere dolor en rodillas ni cadera.', weightStep: 1 }),
-        E('chest_press_machine', 'Press de pecho en máquina', 3, '10-12', '2-3', 90, 'chestpress', 'Pectoral y tríceps', 'Espalda apoyada en el respaldo. Empuja sin bloquear los codos.', 'Press con mancuernas en banco inclinado', { compound: true, weightStep: 1 }),
-        E('lateral_raise_seated', 'Elevaciones laterales sentada', 2, '12-15', '2-3', 60, 'lateral', 'Deltoide lateral', 'Sentada con respaldo y mancuernas ligeras. Sube hasta un poco por debajo del hombro.', 'Elevación lateral en polea', { weightStep: 1 }),
-        E('face_pull', 'Face pull con banda o polea', 2, '12-15', '2-3', 60, 'facepull', 'Deltoide posterior y trapecio medio', 'De pie y erguida. Tira hacia la cara separando las manos.', 'Remo alto con banda, sentada', { weightStep: 1 }),
-        E('triceps_rope', 'Tríceps en polea', 2, '12-15', '2', 60, 'pushdown', 'Tríceps', 'Codos pegados y tronco quieto.', 'Extensión de tríceps con banda', { weightStep: 1 })
+      { id: 'S2', name: 'Sesión 2', focus: 'Tren superior', color: 'blue', exercises: [
+        walk('10min'),
+        activation(4),
+        E('sp_low_row_uni', 'Remo en polea baja a una mano', 3, '15', '2-3', 90, 'cablerow', 'Dorsales y romboides', 'Con 3 bloques. Espalda erguida; lleva el codo atrás pegado al cuerpo.', '', { ...BLOCKS, perSide: true, group: 'S2-row', ...video(8) }),
+        E('sp_face_pull', 'Face pull', 3, '15', '2-3', 90, 'facepull', 'Deltoide posterior y trapecio medio', 'Con 1 bloque. Tira hacia la cara separando las manos.', '', { ...BLOCKS, group: 'S2-row', ...video(8) }),
+        E('sp_incline_press_db', 'Press inclinado con mancuernas', 3, '8', '2-3', 120, 'incline', 'Pectoral y hombro', 'Con mancuernas de 2,5 kg. Al terminar pasa al press francés.', '', { weightStep: 1, compound: true, group: 'S2-press', ...video(9) }),
+        E('sp_french_press', 'Press francés', 3, '5', '2-3', 120, 'pushdown', 'Tríceps', 'Solo con la barra curva: 5 repeticiones en cada ángulo.', '', { weightStep: 1, group: 'S2-press', ...video(9) }),
+        E('sp_row_bilateral', 'Remo bilateral', 4, '8-12', '2-3', 120, 'row', 'Espalda', 'Dos series con 2,5 kg × 12 (sube en 3 segundos y baja en 1) y dos series con 5 kg × 8.', '', { weightStep: 1, compound: true, ...video(10) }),
+        E('sp_vpress_heavy', 'Press vertical pesado', 3, '6', '2-3', 120, 'ohp', 'Hombros y tríceps', 'Con 4 bloques. Al terminar baja a 3 bloques y sigue sin descanso.', '', { ...BLOCKS, compound: true, group: 'S2-vpress', ...video(11) }),
+        E('sp_vpress_light', 'Press vertical ligero', 3, '12', '2-3', 120, 'ohp', 'Hombros y tríceps', 'Con 3 bloques, controlando la bajada.', '', { ...BLOCKS, compound: true, group: 'S2-vpress', ...video(11) }),
+        E('sp_preacher_curl_uni', 'Curl en banco Scott a una mano', 3, '10', '2-3', 120, 'curl', 'Bíceps', 'Con 2,5 kg. Repeticiones profundas y controladas: 2 segundos para subir y 2 para bajar.', '', { weightStep: 1, perSide: true, ...video(12) }),
+        E('sp_pushdown', 'Push down en polea', 3, '12', '2-3', 120, 'pushdown', 'Tríceps', 'Con 2 bloques: 12 repeticiones en cada ángulo. Codos pegados al cuerpo.', '', { ...BLOCKS, ...video(13) }),
+        E('sp_scapular_adduction', 'Aducción escapular', 4, '12', '2-3', 120, 'reversefly', 'Espalda alta (escápulas)', 'Con 5 bloques. Repeticiones controladas: 2 segundos para juntar las escápulas y 2 para soltar.', '', { ...BLOCKS, ...video(14) })
       ]},
-      { id: 'SC', name: 'Día C', focus: 'Pierna y espalda', color: 'yellow', exercises: [
-        E('leg_ext', 'Sillón de cuádriceps', 3, '10-15', '2-3', 90, 'legext', 'Cuádriceps', 'Sube controlado, pausa y baja lento, en un rango cómodo para la rodilla.', 'Extensión de rodilla con banda, sentada', { warn: 'Con artrosis de rodilla, trabaja solo en el recorrido que no genere dolor.', weightStep: 1 }),
-        E('step_up', 'Subida a escalón bajo con apoyo', 2, '8-10', '3', 90, 'stepup', 'Cuádriceps y glúteo', 'Escalón bajo y una mano en un apoyo fijo. Sube empujando con el talón y baja despacio.', 'Prensa a una pierna con carga ligera', { perSide: true, weightStep: 1 }),
-        E('adductor_machine', 'Aductores en máquina', 2, '12-15', '2-3', 60, 'abductor', 'Aductores', 'Espalda apoyada. Cierra controlado.', 'Pelota apretada entre las rodillas, sentada', { weightStep: 1 }),
-        E('cable_row', 'Remo sentado en polea', 3, '10-12', '2-3', 90, 'cablerow', 'Dorsales y romboides', 'Espalda erguida y fija; solo se mueven los brazos. Junta las escápulas al final.', 'Remo en máquina con apoyo de pecho', { compound: true, warn: 'No balancees el tronco adelante y atrás para mover el peso.', weightStep: 1 }),
-        E('pec_deck', 'Aperturas en máquina', 2, '10-12', '2-3', 60, 'pecdeck', 'Pectoral', 'Espalda apoyada. Cierra delante del pecho sin forzar los hombros.', 'Aperturas con banda', { weightStep: 1 }),
-        E('curl_seated', 'Curl de bíceps sentada', 2, '10-12', '2', 60, 'curl', 'Bíceps', 'Espalda apoyada en el respaldo y codos quietos.', 'Curl en polea baja', { weightStep: 1 })
+      { id: 'S3', name: 'Sesión 3', focus: 'Cardio, zona lumbar y flexibilidad', color: 'yellow', exercises: [
+        E('sp_bike', 'Bici', 1, '15min', '', 60, 'legext', 'Cardio', 'A un ritmo cómodo.', '', NO_WEIGHT),
+        E('sp_elliptical', 'Elíptica', 1, '15min', '', 60, 'lunge', 'Cardio', 'A velocidad moderada, con la espalda recta y buena respiración.', '', NO_WEIGHT),
+        E('sp_bosu_lumbar', 'Zona lumbar en bosu', 4, '10', '', 60, 'glutebridge', 'Zona lumbar', '10 repeticiones de cada ejercicio del vídeo.', '', { ...NO_WEIGHT, ...video(15) }),
+        ...lumbarCircuit(4, 'S3-lumbar'),
+        E('sp_hyperextension', 'Hiperextensión', 4, '16', '', 60, 'rdl', 'Zona lumbar y glúteo', 'Con el mentón al pecho: 8 repeticiones lentas y profundas y después 8 rápidas y cortas.', '', { ...NO_WEIGHT, ...video(16) }),
+        E('sp_hip_mobility', 'Movilidad de cadera y espalda baja', 4, '10', '', 60, 'lunge', 'Cadera y zona lumbar', '10 repeticiones lentas y controladas con cada pierna y después 15 elevaciones de tronco por cada lado.', '', { ...NO_WEIGHT, perSide: true, ...video(17) }),
+        E('sp_fascia_posterior', 'Fascia móvil: cadena posterior', 4, '15', '', 60, 'rdl', 'Cadena posterior', '15 rotaciones por cada lado con el mentón pegado al pecho y después 30 segundos de estiramiento.', '', { ...NO_WEIGHT, perSide: true, ...video(18) }),
+        E('sp_posterior_stretch', 'Flexibilidad de cadena posterior', 4, '15s', '', 60, 'rdl', 'Cadena posterior', 'Mantén el estiramiento sin rebotes.', '', { ...NO_WEIGHT, perSide: true, ...video(19) }),
+        E('sp_ab_rotation', 'Rotación abdominal', 3, '15', '2-3', 120, 'pallof', 'Oblicuos', 'Con 2 bloques, girando de forma controlada.', '', { ...BLOCKS, perSide: true, ...video(20) }),
+        E('sp_stretching', 'Flexibilidad', 2, '30s', '', 60, 'lunge', 'Movilidad general', '30 segundos en cada ejercicio del vídeo.', '', { ...NO_WEIGHT, ...video(21) })
+      ]},
+      { id: 'S4', name: 'Sesión 4', focus: 'Tren inferior: isquiosurales y glúteos', color: 'green', exercises: [
+        E('sp_elliptical_warmup', 'Elíptica para calentar', 1, '5min', '', 60, 'lunge', 'Cardio', 'A un ritmo cómodo.', '', NO_WEIGHT),
+        activation(3),
+        ...lumbarCircuit(4, 'S4-lumbar'),
+        E('sp_leg_curl', 'Curl femoral', 3, '15', '2-3', 120, 'legcurl', 'Isquiosurales', 'Con 3 bloques: 5 repeticiones lentas, 5 pausadas y 5 rápidas. Al terminar mantén en isometría.', '', { ...BLOCKS, group: 'S4-legcurl', ...video(22) }),
+        E('sp_leg_curl_iso', 'Curl femoral en isometría', 3, '30s', '', 120, 'legcurl', 'Isquiosurales', 'Mantén la posición sin moverte.', '', { ...BLOCKS, group: 'S4-legcurl', ...video(22) }),
+        E('sp_band_quadruped_abd', 'Abducción en cuadrupedia con banda', 3, '15', '', 150, 'kickback', 'Glúteo medio', 'Espalda neutra; abre la pierna hacia el lado.', '', { ...NO_WEIGHT, perSide: true, group: 'S4-band', ...video(23) }),
+        E('sp_band_kick', 'Patada con banda', 3, '15', '', 150, 'kickback', 'Glúteo mayor', 'Patada hacia atrás sin arquear la zona lumbar.', '', { ...NO_WEIGHT, perSide: true, group: 'S4-band', ...video(23) }),
+        E('sp_bridge_uni', 'Puente a una pierna', 3, '10', '', 150, 'glutebridge', 'Glúteo mayor', 'Sube apretando el glúteo y baja despacio.', '', { ...NO_WEIGHT, perSide: true, group: 'S4-band', ...video(23) }),
+        E('sp_bridge_bi', 'Puente con las dos piernas', 3, '10', '', 150, 'glutebridge', 'Glúteo mayor', 'Sube hasta alinear cadera y muslos sin arquear la zona lumbar.', '', { ...NO_WEIGHT, group: 'S4-band', ...video(23) }),
+        E('sp_band_abduction', 'Abducción con banda', 3, '20', '', 150, 'abductor', 'Glúteo medio', 'Abre las rodillas contra la banda de forma controlada.', '', { ...NO_WEIGHT, group: 'S4-band', ...video(23) }),
+        E('sp_seated_leg_curl', 'Curl femoral sentada', 4, '15', '2-3', 120, 'legcurl', 'Isquiosurales', 'Dos series con 4 bloques y dos series con 5 bloques.', '', { ...BLOCKS, ...video(24) }),
+        E('sp_cable_glute_kick', 'Patada de glúteo en polea', 3, '20', '2-3', 120, 'kickback', 'Glúteo mayor', 'Con 3 bloques: 10 repeticiones muy lentas, descansa 5 segundos y haz otras 10 muy lentas.', '', { ...BLOCKS, perSide: true, ...video(25) }),
+        E('sp_abduction_incline', 'Abducción inclinada', 3, '15', '2-3', 90, 'abductor', 'Glúteo medio', 'Con 6 bloques: 5 repeticiones lentas, 5 pausadas y 5 rápidas.', '', { ...BLOCKS, ...video(7) }),
+        E('sp_dorsiflexion', 'Dorsiflexión', 3, '20', '', 60, 'calf', 'Tibial y tobillo', 'Repeticiones lentas y con buen recorrido.', '', { ...NO_WEIGHT, ...video(26) })
       ]}
     ]
   }
@@ -259,14 +348,32 @@ export function findExercise(program: Program, key: string): Exercise | null {
   return null;
 }
 
-/** Ejercicios que ya no están en ninguna rutina (abdominales). Se conservan para mostrar el historial. */
+/** Ejercicios que ya no están en ninguna rutina (abdominales y Fuerza segura). Se conservan para mostrar el historial. */
 const RETIRED_EXERCISES: Exercise[] = [
   E('plank', 'Plancha frontal', 3, '30-45s', '2', 45, 'plank', 'Core', 'Glúteo apretado y cuerpo en línea recta.', 'Plancha con rodillas apoyadas'),
   E('knee_raise', 'Elevaciones de rodillas', 3, '10-12', '2', 45, 'kneeraise', 'Core', 'Sube sin balancearte y controla la bajada.', 'Dead bug'),
   E('dead_bug', 'Dead bug', 3, '8-10', '2', 45, 'deadbug', 'Core (anti-extensión)', 'Zona lumbar en contacto con el suelo. Estira brazo y pierna contrarios sin que se despegue.', 'Dead bug solo con piernas', { perSide: true }),
   E('pallof', 'Pallof press', 3, '10-12', '2', 45, 'pallof', 'Core (anti-rotación)', 'De lado a la polea y con las manos en el pecho. Empuja al frente y resiste el giro 2 s.', 'Pallof con banda', { perSide: true }),
   E('side_plank', 'Plancha lateral', 3, '20-30s', '2', 45, 'sideplank', 'Oblicuos (estabilidad lateral)', 'Codo bajo el hombro, cadera alta y cuerpo en línea.', 'Plancha lateral con rodillas apoyadas', { perSide: true }),
-  E('incline_plank', 'Plancha inclinada', 3, '20-30s', '3', 60, 'inclineplank', 'Core (anti-extensión)', 'Manos en un banco y cuerpo en línea. Cuanto más alta la superficie, más fácil.', 'Plancha contra la pared', { weightStep: 1 })
+  E('incline_plank', 'Plancha inclinada', 3, '20-30s', '3', 60, 'inclineplank', 'Core (anti-extensión)', 'Manos en un banco y cuerpo en línea. Cuanto más alta la superficie, más fácil.', 'Plancha contra la pared', { weightStep: 1 }),
+  // Fuerza segura (sustituida por la rutina del especialista)
+  E('leg_press', 'Prensa de piernas', 3, '10-12', '3', 120, 'legpress', 'Cuádriceps y glúteo', 'Baja solo hasta donde la pelvis y la zona lumbar siguen pegadas al respaldo. Empuja con todo el pie.', 'Sentarse y levantarse de un banco', { compound: true, warn: 'No hagas recorridos profundos si la zona lumbar se despega del respaldo o si notas dolor en rodilla o cadera.', weightStep: 1 }),
+  E('leg_curl_seated', 'Curl femoral sentado', 3, '10-12', '2-3', 90, 'legcurl', 'Isquiotibiales', 'Espalda apoyada en el respaldo. Flexiona y vuelve lento en 3 segundos.', 'Curl femoral con banda, sentada', { weightStep: 1 }),
+  E('lat_pulldown_neutral', 'Jalón al pecho agarre neutro', 3, '10-12', '2-3', 90, 'pullup', 'Dorsales', 'Sentada con los muslos sujetos. Lleva los codos hacia abajo sin echar el tronco atrás.', 'Jalón en máquina con apoyo de pecho', { compound: true, weightStep: 1 }),
+  E('machine_row_supported', 'Remo en máquina con apoyo de pecho', 3, '10-12', '2-3', 90, 'cablerow', 'Espalda media y alta', 'El apoyo de pecho quita carga a la zona lumbar. Lleva los codos atrás y junta las escápulas.', 'Remo sentado en polea con espalda erguida', { weightStep: 1 }),
+  E('abductor_machine', 'Abductores en máquina', 2, '12-15', '2-3', 60, 'abductor', 'Glúteo medio', 'Espalda apoyada. Abre controlado en un rango cómodo para la cadera.', 'Abducción con banda, sentada', { weightStep: 1 }),
+  E('glute_bridge', 'Puente de glúteo', 3, '10-15', '3', 90, 'glutebridge', 'Glúteo mayor', 'Pies apoyados. Sube hasta alinear cadera y muslos apretando el glúteo, sin arquear la zona lumbar.', 'Hip thrust en máquina con carga ligera', { warn: 'Progresa de peso corporal a banda y después a un peso ligero sobre la cadera.', weightStep: 1 }),
+  E('box_squat', 'Sentadilla a banco con mancuerna', 3, '8-12', '3', 120, 'boxsquat', 'Cuádriceps y glúteo', 'Mancuerna ligera al pecho. Siéntate controlada en un banco alto y levántate empujando el suelo.', 'Prensa de piernas', { compound: true, warn: 'Usa un banco a la altura que no genere dolor en rodillas ni cadera.', weightStep: 1 }),
+  E('chest_press_machine', 'Press de pecho en máquina', 3, '10-12', '2-3', 90, 'chestpress', 'Pectoral y tríceps', 'Espalda apoyada en el respaldo. Empuja sin bloquear los codos.', 'Press con mancuernas en banco inclinado', { compound: true, weightStep: 1 }),
+  E('lateral_raise_seated', 'Elevaciones laterales sentada', 2, '12-15', '2-3', 60, 'lateral', 'Deltoide lateral', 'Sentada con respaldo y mancuernas ligeras. Sube hasta un poco por debajo del hombro.', 'Elevación lateral en polea', { weightStep: 1 }),
+  E('face_pull', 'Face pull con banda o polea', 2, '12-15', '2-3', 60, 'facepull', 'Deltoide posterior y trapecio medio', 'De pie y erguida. Tira hacia la cara separando las manos.', 'Remo alto con banda, sentada', { weightStep: 1 }),
+  E('triceps_rope', 'Tríceps en polea', 2, '12-15', '2', 60, 'pushdown', 'Tríceps', 'Codos pegados y tronco quieto.', 'Extensión de tríceps con banda', { weightStep: 1 }),
+  E('leg_ext', 'Sillón de cuádriceps', 3, '10-15', '2-3', 90, 'legext', 'Cuádriceps', 'Sube controlado, pausa y baja lento, en un rango cómodo para la rodilla.', 'Extensión de rodilla con banda, sentada', { warn: 'Con artrosis de rodilla, trabaja solo en el recorrido que no genere dolor.', weightStep: 1 }),
+  E('step_up', 'Subida a escalón bajo con apoyo', 2, '8-10', '3', 90, 'stepup', 'Cuádriceps y glúteo', 'Escalón bajo y una mano en un apoyo fijo. Sube empujando con el talón y baja despacio.', 'Prensa a una pierna con carga ligera', { perSide: true, weightStep: 1 }),
+  E('adductor_machine', 'Aductores en máquina', 2, '12-15', '2-3', 60, 'abductor', 'Aductores', 'Espalda apoyada. Cierra controlado.', 'Pelota apretada entre las rodillas, sentada', { weightStep: 1 }),
+  E('cable_row', 'Remo sentado en polea', 3, '10-12', '2-3', 90, 'cablerow', 'Dorsales y romboides', 'Espalda erguida y fija; solo se mueven los brazos. Junta las escápulas al final.', 'Remo en máquina con apoyo de pecho', { compound: true, warn: 'No balancees el tronco adelante y atrás para mover el peso.', weightStep: 1 }),
+  E('pec_deck', 'Aperturas en máquina', 2, '10-12', '2-3', 60, 'pecdeck', 'Pectoral', 'Espalda apoyada. Cierra delante del pecho sin forzar los hombros.', 'Aperturas con banda', { weightStep: 1 }),
+  E('curl_seated', 'Curl de bíceps sentada', 2, '10-12', '2', 60, 'curl', 'Bíceps', 'Espalda apoyada en el respaldo y codos quietos.', 'Curl en polea baja', { weightStep: 1 })
 ];
 
 export function findExerciseAnywhere(key: string): Exercise | null {
