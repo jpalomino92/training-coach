@@ -36,6 +36,10 @@ describe('rutinas propias', () => {
     expect(validateProgram(copy)).toEqual([]);
   });
 
+  it('todas las rutinas incluidas se pueden copiar y guardar sin cambios', () => {
+    for (const p of programList()) expect(validateProgram(normalizeProgram(duplicateProgram(p))), p.id).toEqual([]);
+  });
+
   it('valida series, rango, RIR, descanso y abreviaturas repetidas', () => {
     const p = duplicateProgram(programList()[0]);
     p.days[1].id = p.days[0].id;

@@ -67,9 +67,11 @@ interface EditProps {
   onDelete?(): Promise<void>;
   /** Ejercicio con barra: muestra los discos por lado (peso de la barra en kg). */
   barKg?: number;
+  /** Indicación de esta serie (sistema de 2 series). */
+  note?: string;
 }
 
-export function SetEditor({ ex, index, mode, initial, reference, onSubmit, onCancel, onDelete, barKg }: EditProps) {
+export function SetEditor({ ex, index, mode, initial, reference, onSubmit, onCancel, onDelete, barKg, note }: EditProps) {
   const [d, setD] = useState<SetDraft>(initial);
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
@@ -108,6 +110,7 @@ export function SetEditor({ ex, index, mode, initial, reference, onSubmit, onCan
           ? <button type="button" className="btn btn-link danger-link" onClick={del}>Eliminar serie</button>
           : reference && <span className="muted">{reference}</span>}
       </div>
+      {note && <p className="set-note">{note}</p>}
       {!ex.noWeight && (
         <div className="w"><WeightStepper ref={weightRef} value={d.weight} step={ex.weightStep} unit={loadUnit(ex)} onChange={v => setD({ ...d, weight: v })} error={!!errors.weight} errorId={errId} />
           {barKg != null && <p className="plates" aria-live="polite">{platesText(parseNum(d.weight), barKg)}</p>}</div>

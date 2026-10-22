@@ -6,6 +6,7 @@
    ========================================================== */
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
 import { builtinLookup, getProgram } from '../domain/routines';
+import { isCardioMachineKey, withCardio } from '../domain/cardio';
 import type { ImportedWorkout } from '../domain/csv';
 import { prefsOf } from '../domain/prefs';
 import type {
@@ -54,6 +55,10 @@ export interface AppApi {
   /** Entrenador del alumno y rutina que le asignó. */
   coachLink: CoachLink | null;
   assignedProgram: Program | null;
+  /** Se entrena con la rutina asignada por el entrenador (no con una elegida por la persona). */
+  usingAssigned: boolean;
+  /** Cambia la rutina activa: una incluida o la asignada por el entrenador. `ack`: se aceptó su aviso de salud. */
+  chooseRoutine(id: string, ack?: boolean): Promise<void>;
   /** Vuelve a leer el entrenador y la rutina asignada. */
   refreshCoach(): Promise<void>;
   joinCoach(code: string): Promise<void>;
@@ -199,9 +204,10 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
 
   const profile = data.profile;
   const customs = useMemo(() => (assignedProgram ? { [assignedProgram.id]: assignedProgram } : {}), [assignedProgram]);
-  const lookup = useCallback<ProgramLookup>(id => customs[id] || builtinLookup(id), [customs]);
-  // La rutina asignada por el entrenador manda sobre la elegida en el perfil
-  const program = assignedProgram || getProgram(profile?.routine_id);
+  const lookup = useCallback<ProgramLookup>(id => { const p = customs[id] || builtinLookup(id); return p && withCardio(p); }, [customs]);
+  // La rutina asignada por el entrenador manda sobre la elegida en el perfil, salvo que la persona elija otra
+  const usingAssigned = !!assignedProgram && prefsOf(profile).own_routine_over !== assignedProgram.id;
+  const program = withCardio((usingAssigned && assignedProgram) || getProgram(profile?.routine_id));
   const dayId = program.days.some(d => d.id === dayIdState) ? dayIdState : defaultDayId(data, program);
 
   const setTab = useCallback((t: Tab) => {
@@ -220,7 +226,25 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
   const api: AppApi = {
     status, bootError, mode: backend?.auth.mode || 'demo', user, data, profile, program,
     tab, setTab, dayId, setDayId, editingProfile, setEditingProfile, toast, showToast, sync,
-    prefs: prefsOf(profile), lookup, coachApi: coachRef.current, coach, coachLink, assignedProgram,
+    prefs: prefsOf(profile), lookup, coachApi: coachRef.current, coach, coachLink, assignedProgram, usingAssigned,
+
+    async chooseRoutine(id, ack) {
+      if (!data.profile) return;
+      const { id: _id, user_id: _u, updated_at: _up, ...rest } = data.profile;
+      const prefs: Partial<Prefs> = { ...rest.prefs };
+      if (assignedProgram && id === assignedProgram.id) {
+        delete prefs.own_routine_over;
+        dispatch({ type: 'profile', profile: await store().saveProfile({ ...rest, prefs }) });
+      } else {
+        if (assignedProgram) prefs.own_routine_over = assignedProgram.id;
+        const needsAck = !!builtinLookup(id)?.safety.requiresHealthNotice;
+        const keepAck = rest.routine_id === id && rest.health_notice_ack_at;
+        const health_notice_ack_at = needsAck ? (keepAck ? rest.health_notice_ack_at : ack ? new Date().toISOString() : null) : rest.health_notice_ack_at;
+        if (needsAck && !health_notice_ack_at) throw new Error('Acepta el aviso de salud para usar esta rutina.');
+        dispatch({ type: 'profile', profile: await store().saveProfile({ ...rest, routine_id: id, health_notice_ack_at, prefs }) });
+      }
+      setDayId('');
+    },
 
     async refreshCoach() { await loadCoach(coachRef.current); },
     async joinCoach(code) {
@@ -307,7 +331,8 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
       const set = await store().upsertSet({ workout_id: w.id, exercise_key: ex.key, set_index: index, weight: v.weight, reps: v.reps, rir: v.rir });
       dispatch({ type: 'set', set });
       const all = [...setsOf(data, w.id).filter(s => s.id !== set.id && !(s.exercise_key === ex.key && s.set_index === index)), set];
-      const dayCompleted = w.status === 'in_progress' && isDayDone(all, day);
+      // Un tramo de cardio no cierra el día: se pueden encadenar más máquinas y se termina a mano
+      const dayCompleted = w.status === 'in_progress' && !isCardioMachineKey(ex.key) && isDayDone(all, day);
       if (dayCompleted) {
         dispatch({ type: 'workout', workout: await store().updateWorkout(w.id, { status: 'completed', completed_at: new Date().toISOString() }) });
       }

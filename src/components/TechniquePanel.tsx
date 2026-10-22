@@ -1,6 +1,7 @@
 /* Desplegable "Técnica, alternativa y notas": técnica (cue), alternativa y
    precaución de la rutina, vídeo, sensación y notas (se guardan solas). */
 import { forwardRef, useEffect, useId, useImperativeHandle, useRef, useState } from 'react';
+import { TECHNIQUES } from '../domain/setTechnique';
 import type { Exercise, Feel } from '../domain/types';
 import { FeelPicker } from './FeelPicker';
 import { Icon } from './Icon';
@@ -53,6 +54,11 @@ export const TechniquePanel = forwardRef<TechniquePanelHandle, Props>(function T
           {ex.cue && <div><dt className="eyebrow">Técnica</dt><dd>{ex.cue}</dd></div>}
           {ex.alt && <div><dt className="eyebrow" id={altId}>{isAlternative ? 'Ejercicio de la rutina' : 'Alternativa'}</dt><dd ref={altRef} tabIndex={-1} aria-labelledby={altId}>{ex.alt}</dd></div>}
           {ex.muscle && <div><dt className="eyebrow">Músculo principal</dt><dd>{ex.muscle}</dd></div>}
+          {ex.setTechnique && (
+            <div><dt className="eyebrow">2 series al fallo</dt><dd>
+              Serie 1: pesada, al fallo entre {ex.reps.min} y {ex.reps.max} repeticiones. Serie 2: baja el peso un 30–40 % y haz {TECHNIQUES[ex.setTechnique].name}. {TECHNIQUES[ex.setTechnique].how} Sube de peso cuando la serie 1 pase de {ex.reps.max} repeticiones limpias.
+            </dd></div>
+          )}
           {!!ex.instructions?.length && (
             <div><dt className="eyebrow">Paso a paso <span lang="es">(en inglés)</span></dt><dd><ol className="steps-en" lang="en">{ex.instructions.map((s, i) => <li key={i}>{s}</li>)}</ol></dd></div>
           )}

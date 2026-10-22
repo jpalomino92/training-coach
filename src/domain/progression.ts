@@ -4,6 +4,7 @@
    de texto. La persona siempre decide el peso de la sesión.
    ========================================================== */
 import { fmtNum, isTimed, loadText, round2, unitSuffix, unitWord as unitWordOf } from './format';
+import { secondSetWeight, TECHNIQUES } from './setTechnique';
 import type { Exercise, Feel, Program } from './types';
 
 export type SuggestionLevel = 'none' | 'up' | 'hold' | 'down' | 'pain';
@@ -62,6 +63,14 @@ export function suggest(ex: Exercise, sets: SetLike[] | null | undefined, progra
   const unitWord = unitWordOf(ex);
   const kg = (v: number) => loadText(v, ex);
 
+  if (ex.setTechnique && (!sets || !sets.length)) {
+    return {
+      level: 'none',
+      action: 'Primera vez.',
+      reason: `Serie 1: elige un peso con el que llegues al fallo entre ${ex.reps.min} y ${ex.reps.max} repeticiones con técnica estricta. Serie 2: baja un 30–40 % y haz ${TECHNIQUES[ex.setTechnique].name}.`
+    };
+  }
+
   if (!sets || !sets.length) {
     const range = ex.reps.min === ex.reps.max ? String(ex.reps.min) : `${ex.reps.min}-${ex.reps.max}`;
     const what = ex.load === 'bloques' ? 'los bloques con los que' : 'un peso con el que';
@@ -84,6 +93,11 @@ export function suggest(ex: Exercise, sets: SetLike[] | null | undefined, progra
       action: 'No aumentes el peso.',
       reason: 'Si hoy vuelves a notar dolor, detente y no sigas con este ejercicio. Coméntalo con tu profesional sanitario antes de retomarlo.'
     };
+  }
+
+  if (ex.setTechnique) {
+    const top = sets.find(x => x.set_index === 0);
+    if (top && Number(top.weight) > 0) return twoSetSuggest(ex, top, cfg.cautious, kg);
   }
 
   const sum = summarize(sets)!;
@@ -150,5 +164,36 @@ export function suggest(ex: Exercise, sets: SetLike[] | null | undefined, progra
     reason: cfg.cautious
       ? `Prioriza un movimiento lento y sin dolor. Cuando hagas ${ex.reps.max} en las ${ex.sets} series con RIR ${cfg.minRirToProgress} o más, podrías subir a ${kg(up)}.`
       : `Cuando hagas ${ex.reps.max} ${unitWord} en todas las series, sube a ${kg(up)}.`
+  };
+}
+
+/**
+ * Sistema de 2 series: las dos van al fallo, así que el RIR no decide.
+ * Manda la serie 1: se sube cuando supera el máximo del rango con repeticiones limpias.
+ */
+function twoSetSuggest(ex: Exercise, top: SetLike, cautious: boolean, kg: (v: number) => string): Suggestion {
+  const w = Number(top.weight);
+  const up = round2(w + ex.weightStep);
+  const down = Math.max(0, round2(w - ex.weightStep));
+  const second = ` En la serie 2, baja a unos ${kg(secondSetWeight(ex, w))} y haz ${TECHNIQUES[ex.setTechnique!].name}.`;
+  const lastText = `La última vez hiciste ${top.reps} repeticiones con ${kg(w)} en la serie 1.`;
+  if (top.reps > ex.reps.max) {
+    return {
+      level: 'up', weight: up,
+      action: cautious ? `Podrías subir la serie 1 a ${kg(up)}, solo si no hubo dolor.` : `Sube la serie 1 a ${kg(up)}.`,
+      reason: `${lastText} Pasaste el máximo de ${ex.reps.max}: con el peso nuevo empieza cerca de ${ex.reps.min}.${second}`
+    };
+  }
+  if (top.reps < ex.reps.min) {
+    return {
+      level: 'down', weight: down,
+      action: `Baja la serie 1 a ${kg(down)}.`,
+      reason: `${lastText} No llegaste a ${ex.reps.min}: con menos peso el músculo hace el trabajo sin balanceo.${second}`
+    };
+  }
+  return {
+    level: 'hold', weight: w,
+    action: `Mantén ${kg(w)} en la serie 1 e intenta ${top.reps + 1} repeticiones.`,
+    reason: `${lastText} Sube de peso cuando pases de ${ex.reps.max} repeticiones limpias.${second}`
   };
 }

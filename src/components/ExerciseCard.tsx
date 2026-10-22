@@ -8,6 +8,7 @@ import { recordFor } from '../domain/records';
 import { BARBELL_KEYS } from '../domain/plates';
 import type { Exercise, Feel, Program, WorkoutSet } from '../domain/types';
 import { lastSetAt, prefillFor, type LastSession as Last } from '../domain/workout';
+import { setNote, TECHNIQUES } from '../domain/setTechnique';
 import { Button } from './Button';
 import { ExerciseIllustration } from './ExerciseIllustration';
 import { FeelPicker } from './FeelPicker';
@@ -90,7 +91,7 @@ export function ExerciseCard(p: ExerciseCardProps) {
       const initial = saved ? draftFrom(saved) : draftFrom(prefillFor(ex, i, sets, last));
       return (
         <SetEditor key={`${ex.key}-${i}-${mode}`} ex={ex} index={i} mode={mode} initial={initial} reference={lastRef(i)}
-          barKg={BARBELL_KEYS.has(ex.key) ? p.barKg : undefined}
+          barKg={BARBELL_KEYS.has(ex.key) ? p.barKg : undefined} note={setNote(ex, i)}
           onSubmit={async v => {
             const before = p.history;
             const rec = await p.onRecord(i, v, mode);
@@ -124,6 +125,7 @@ export function ExerciseCard(p: ExerciseCardProps) {
           {ex.rir && <span className="chip">RIR {ex.rir}</span>}
           <span className="chip"><Icon name="clock" />{p.restLabel ?? `Descanso ${restText(p.rest)}`}</span>
           <span className="chip">{ex.muscle}</span>
+          {ex.setTechnique && <span className="chip">Serie 2: {TECHNIQUES[ex.setTechnique].name}</span>}
         </div>
       )}
 

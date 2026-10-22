@@ -1,5 +1,5 @@
 /* Editar un ejercicio de una rutina propia: nombre, series, rango, RIR,
-   descanso, incremento de peso, técnica, alternativa y precaución. */
+   descanso, carga (kg, bloques o sin peso), técnica, alternativa y precaución. */
 import { useId, useState, type FormEvent } from 'react';
 import { Button } from '../../components/Button';
 import { NumInput, TextField } from '../../components/Fields';
@@ -8,10 +8,11 @@ import { Icon } from '../../components/Icon';
 import { RestStepper } from '../../components/RestStepper';
 import { Sheet } from '../../components/Sheet';
 import { SwitchRow } from '../../components/Switch';
-import { parseNum } from '../../domain/format';
-import type { Exercise } from '../../domain/types';
+import { maxReps, parseNum, unitWord } from '../../domain/format';
+import type { Exercise, Unit } from '../../domain/types';
 
 const STEPS = [0.5, 1, 1.25, 2.5, 5];
+const UNITS: [Unit, string, string][] = [['reps', 'Repeticiones', 'Reps'], ['s', 'Segundos', 'Seg.'], ['min', 'Minutos', 'Min.']];
 
 export function TextArea({ label, value, onChange, hint, rows = 2, placeholder }: { label: string; value: string; onChange(v: string): void; hint?: string; rows?: number; placeholder?: string }) {
   const id = useId();
@@ -31,7 +32,8 @@ export function ExerciseEditor({ initial, onSave, onClose }: { initial: Exercise
   const [max, setMax] = useState(String(initial.reps.max));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const set = <K extends keyof Exercise>(k: K, v: Exercise[K]) => setEx(e => ({ ...e, [k]: v }));
-  const unitMax = ex.unit === 's' ? 600 : 50;
+  const unitMax = maxReps(ex);
+  const unitShort = UNITS.find(u => u[0] === ex.unit)![2];
 
   const submit = (ev: FormEvent) => {
     ev.preventDefault();
@@ -40,9 +42,10 @@ export function ExerciseEditor({ initial, onSave, onClose }: { initial: Exercise
     if (!ex.name.trim()) err.name = 'Ponle un nombre.';
     if (s == null || !Number.isInteger(s) || s < 1 || s > 10) err.sets = 'Entre 1 y 10 series.';
     if (a == null || b == null || !Number.isInteger(a) || !Number.isInteger(b) || a < 1 || b < a || b > unitMax) {
-      err.reps = ex.unit === 's' ? `Segundos entre 1 y ${unitMax}; el máximo no puede ser menor que el mínimo.` : `Repeticiones entre 1 y ${unitMax}; el máximo no puede ser menor que el mínimo.`;
+      const w = unitWord(ex);
+      err.reps = `${w[0].toUpperCase() + w.slice(1)} entre 1 y ${unitMax}; el máximo no puede ser menor que el mínimo.`;
     }
-    if (!/^\d(-\d)?$/.test(ex.rir.trim())) err.rir = 'Un número o un rango, por ejemplo 2 o 2-3.';
+    if (!/^(\d(-\d)?)?$/.test(ex.rir.trim())) err.rir = 'Un número o un rango, por ejemplo 2 o 2-3, o vacío.';
     setErrors(err);
     if (Object.keys(err).length) return;
     onSave({ ...ex, name: ex.name.trim(), rir: ex.rir.trim(), sets: s!, reps: { min: a!, max: b! }, muscle: ex.muscle.trim(), cue: ex.cue.trim(), alt: ex.alt.trim(), warn: ex.warn.trim() });
@@ -64,11 +67,11 @@ export function ExerciseEditor({ initial, onSave, onClose }: { initial: Exercise
             <NumInput id="ed-sets" value={sets} onChange={setSets} error={!!errors.sets} errorId="ed-sets-e" />
           </div>
           <div className="fl">
-            <label htmlFor="ed-min">{ex.unit === 's' ? 'Seg. mín.' : 'Reps mín.'}</label>
+            <label htmlFor="ed-min">{unitShort} mín.</label>
             <NumInput id="ed-min" value={min} onChange={setMin} error={!!errors.reps} errorId="ed-reps-e" />
           </div>
           <div className="fl">
-            <label htmlFor="ed-max">{ex.unit === 's' ? 'Seg. máx.' : 'Reps máx.'}</label>
+            <label htmlFor="ed-max">{unitShort} máx.</label>
             <NumInput id="ed-max" value={max} onChange={setMax} error={!!errors.reps} errorId="ed-reps-e" />
           </div>
         </div>
@@ -77,14 +80,23 @@ export function ExerciseEditor({ initial, onSave, onClose }: { initial: Exercise
 
         <div className="field">
           <span className="field-label" id="ed-unit">Se cuenta en</span>
-          <div className="seg cols-2" role="group" aria-labelledby="ed-unit">
-            <button type="button" aria-pressed={ex.unit === 'reps'} onClick={() => set('unit', 'reps')}>Repeticiones</button>
-            <button type="button" aria-pressed={ex.unit === 's'} onClick={() => set('unit', 's')}>Segundos</button>
+          <div className="seg cols-3" role="group" aria-labelledby="ed-unit">
+            {UNITS.map(([u, label]) => <button key={u} type="button" aria-pressed={ex.unit === u} onClick={() => set('unit', u)}>{label}</button>)}
           </div>
         </div>
 
         <TextField label="RIR objetivo" value={ex.rir} onChange={e => set('rir', e.target.value)} error={errors.rir} narrow maxLength={3} inputMode="numeric"
-          hint="Repeticiones en reserva al terminar la serie. Un número (2) o un rango (2-3)." />
+          hint="Repeticiones en reserva al terminar la serie. Un número (2) o un rango (2-3). Déjalo vacío en cardio o movilidad." />
+
+        <div className="field">
+          <span className="field-label" id="ed-load">Carga</span>
+          <div className="seg cols-3" role="group" aria-labelledby="ed-load" aria-describedby="ed-load-h">
+            <button type="button" aria-pressed={!ex.noWeight && ex.load !== 'bloques'} onClick={() => setEx(e => ({ ...e, noWeight: undefined, load: undefined }))}>Kilos</button>
+            <button type="button" aria-pressed={!ex.noWeight && ex.load === 'bloques'} onClick={() => setEx(e => ({ ...e, noWeight: undefined, load: 'bloques' }))}>Bloques</button>
+            <button type="button" aria-pressed={!!ex.noWeight} onClick={() => setEx(e => ({ ...e, noWeight: true, load: undefined }))}>Sin peso</button>
+          </div>
+          <p className="hint" id="ed-load-h">Bloques: máquinas de placas. Sin peso: no se pide el peso al registrar la serie.</p>
+        </div>
 
         <RestStepper label="Descanso" hint="Entre series de este ejercicio." value={ex.rest} onChange={v => set('rest', v)} />
 
@@ -93,7 +105,7 @@ export function ExerciseEditor({ initial, onSave, onClose }: { initial: Exercise
           <div className="seg cols-5" role="group" aria-labelledby="ed-step" aria-describedby="ed-step-h">
             {STEPS.map(s => <button key={s} type="button" aria-pressed={ex.weightStep === s} onClick={() => set('weightStep', s)}>{String(s).replace('.', ',')}</button>)}
           </div>
-          <p className="hint" id="ed-step-h">Kilos que suma o resta cada toque de − / + y lo que se sugiere subir.</p>
+          <p className="hint" id="ed-step-h">{ex.load === 'bloques' ? 'Bloques' : 'Kilos'} que suma o resta cada toque de − / + y lo que se sugiere subir.</p>
         </div>
 
         <div className="card">

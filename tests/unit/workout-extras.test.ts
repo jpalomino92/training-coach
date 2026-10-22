@@ -40,10 +40,10 @@ describe('alternativa del día', () => {
       [wk('w1', 'PA', '2026-09-01T10:00:00', '2026-09-01T11:00:00'), wk('w2', 'PA', '2026-09-08T10:00:00', '2026-09-08T11:00:00')],
       [...[0, 1, 2, 3].map(i => st('w1', 'squat_bar', i, 100, 8)), ...[0, 1, 2, 3].map(i => st('w2', 'squat_bar__alt', i, 60, 8))]
     );
-    expect(lastSessionFor(d, P, 'squat_bar')!.sets[0].weight).toBe(100);
-    expect(lastSessionFor(d, P, 'squat_bar__alt')!.sets[0].weight).toBe(60);
+    expect(lastSessionFor(d, 'squat_bar')!.sets[0].weight).toBe(100);
+    expect(lastSessionFor(d, 'squat_bar__alt')!.sets[0].weight).toBe(60);
     const alt = altExercise(squat);
-    expect(suggest(alt, lastSessionFor(d, P, alt.key)!.sets, P).action).toBe('Sube a 62,5 kg.');
+    expect(suggest(alt, lastSessionFor(d, alt.key)!.sets, P).action).toBe('Sube a 62,5 kg.');
     const prog = exerciseProgress(d, P, '2026-09-01');
     expect(prog.map(p => [p.ex.name, p.isAlternative, p.max])).toEqual([['Sentadilla con barra', false, 100], ['Sentadilla en Smith o hack', true, 60]]);
   });

@@ -11,6 +11,7 @@ import { PAIN_GUIDE } from '../domain/routines';
 import { dayUnits, isGroup, supersetPrefsFor, unitLabel } from '../domain/supersets';
 import { totalSets } from '../domain/workout';
 import { useApp } from '../state/AppContext';
+import { RoutinePicker } from './RoutinePicker';
 
 const WEEKDAY_INDEX = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const WEEKDAY_NAME: Record<string, string> = { L: 'Lunes', M: 'Martes', X: 'Miércoles', J: 'Jueves', V: 'Viernes', S: 'Sábado', D: 'Domingo' };
@@ -38,6 +39,7 @@ export function RoutineView() {
   /** Semana tipo en edición (null: no se está editando). */
   const [draft, setDraft] = useState<[string, string | null][] | null>(null);
   const [saving, setSaving] = useState(false);
+  const [picking, setPicking] = useState(false);
   const savePlan = async (next: [string, string | null][] | null) => {
     setSaving(true);
     try {
@@ -60,6 +62,8 @@ export function RoutineView() {
         <p className="sm muted">{[program.name, `${program.daysPerWeek} días por semana`, program.level].filter(Boolean).join(' · ')}</p>
         {program.custom && program.coachName && <p className="sm"><Icon name="users" className="inline-ic" /> Asignada por {program.coachName}</p>}
       </div>
+      <Button variant="secondary" block icon="rutina" onClick={() => setPicking(true)}>Cambiar de rutina</Button>
+      {picking && <RoutinePicker onClose={() => setPicking(false)} />}
 
       {program.safety.requiresHealthNotice && <HealthNoticeFull safety={program.safety} />}
 

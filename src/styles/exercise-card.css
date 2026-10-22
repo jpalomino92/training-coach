@@ -139,3 +139,8 @@
 .alt-switch .btn-link svg{width:18px;height:18px}
 .set-edit .plates{margin-top:6px;font-size:var(--fs-sm);color:var(--muted);text-align:center;line-height:1.35}
 .alt-switch .btn-link svg{flex-shrink:0;width:20px;height:20px}
+.set-note{margin:0;font-size:15px;line-height:1.35;color:var(--ink)}
+
+/* ===== Cardio final ===== */
+.cardio-list{list-style:none;margin:0;padding:0}
+.cardio-select{height:var(--field);padding:0 10px;font:600 18px/1 var(--font-body)}

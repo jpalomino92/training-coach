@@ -101,7 +101,34 @@ describe('componentes', () => {
     expect(within(card).getByRole('form', { name: 'Serie 2 de 4' })).toBeInTheDocument();
     // La siguiente serie llega rellenada con la anterior de hoy
     expect(within(card).getByLabelText('Peso kg')).toHaveValue('80');
-    expect(screen.getByText(/En progreso · 1 de 23 series/)).toBeInTheDocument();
+    expect(screen.getByText(/En progreso · 1 de 24 series/)).toBeInTheDocument();
+  });
+
+  it('cambiar de rutina desde Rutina: los ejercicios que se repiten conservan su historial', async () => {
+    const user = userEvent.setup();
+    render(<App backend={backend()} />);
+    await signUpAndOnboard(user, /Recomposición/);
+    await user.click(screen.getByRole('button', { name: 'Empezar' }));
+    const card = await screen.findByRole('article', { name: 'Hip thrust con barra' });
+    await user.type(within(card).getByLabelText('Peso kg'), '60');
+    await user.type(within(card).getByLabelText('Reps'), '10');
+    await user.click(within(card).getByRole('button', { name: /Completar serie/ }));
+    await within(card).findByText('✓ Serie registrada');
+
+    await user.click(within(screen.getByRole('navigation', { name: 'Secciones' })).getByRole('button', { name: 'Rutina' }));
+    await user.click(screen.getByRole('button', { name: 'Cambiar de rutina' }));
+    const sheet = screen.getByRole('dialog', { name: 'Cambiar de rutina' });
+    await user.click(within(sheet).getByRole('button', { name: /^Torso \/ Pierna/ }));
+    await user.click(within(sheet).getByRole('button', { name: 'Cambiar a Torso / Pierna' }));
+    expect(await screen.findByText('Ahora entrenas con Torso / Pierna.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Torso / Pierna', level: 1 })).toBeInTheDocument();
+
+    // En la rutina nueva, el hip thrust (Pierna B) sigue con su última sesión
+    await user.click(within(screen.getByRole('navigation', { name: 'Secciones' })).getByRole('button', { name: 'Hoy' }));
+    await user.click(screen.getByRole('button', { name: /^PB,/ }));
+    const again = await screen.findByRole('article', { name: 'Hip thrust con barra' });
+    expect(within(again).getByText(/Última sesión/)).toBeInTheDocument();
+    expect(within(again).getByLabelText('Peso kg')).toHaveValue('60');
   });
 
   it('Hoy: en un circuito se alternan las series y el descanso llega al terminar la vuelta', async () => {

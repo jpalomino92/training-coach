@@ -95,6 +95,14 @@ export async function completeWholeDay(page: Page, v = { weight: '20', reps: '10
     }
     const next = page.getByRole('button', { name: /^Siguiente:/ });
     if (await next.count()) { await next.click(); continue; }
+    // Cardio final: un tramo y terminar
+    const cardio = page.getByRole('form', { name: 'Añadir cardio' });
+    if (await cardio.count()) {
+      await cardio.getByLabel('Min').fill('10');
+      await cardio.getByRole('button', { name: /^Añadir/ }).click();
+      await page.getByRole('article', { name: 'Cardio final' }).getByRole('button', { name: 'Terminar entrenamiento' }).click();
+      continue;
+    }
     if (!opts.keepOpen) await closeDone(page);
     return;
   }

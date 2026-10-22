@@ -32,7 +32,7 @@ function Seg({ label, options, value, onChange, cols }: { label: string; options
 }
 
 export function OnboardingView() {
-  const { profile, saveProfile, setEditingProfile, signOut, showToast, assignedProgram } = useApp();
+  const { profile, saveProfile, setEditingProfile, signOut, showToast, assignedProgram, usingAssigned } = useApp();
   const editing = !!profile;
   const [step, setStep] = useState<1 | 2>(1);
   const [name, setName] = useState(profile?.name || '');
@@ -83,7 +83,9 @@ export function OnboardingView() {
           ? (prev.routine_id === routineId && prev.health_notice_ack_at ? prev.health_notice_ack_at : new Date().toISOString())
           : prev.health_notice_ack_at || null,
         theme: prev.theme || 'auto',
-        show_body_weight: prev.show_body_weight ?? true
+        show_body_weight: prev.show_body_weight ?? true,
+        // Elegir otra rutina deja de lado la del entrenador (se puede volver desde Rutina)
+        ...(assignedProgram && usingAssigned && prev.routine_id !== routineId ? { prefs: { ...prev.prefs, own_routine_over: assignedProgram.id } } : {})
       };
       await saveProfile(input);
       if (editing) showToast('Perfil guardado.');
@@ -136,8 +138,8 @@ export function OnboardingView() {
       </div>
       <h1 className="h1" tabIndex={-1} ref={titleRef}>Elige tu rutina</h1>
       {editing && <p className="muted">Si cambias de rutina, tu historial anterior se conserva.</p>}
-      {assignedProgram && (
-        <div className="note"><Icon name="info" /><p>Ahora entrenas con <b>{assignedProgram.shortName}</b>, la rutina que te asignó tu entrenador. La que elijas aquí se usará si deja de asignártela.</p></div>
+      {assignedProgram && usingAssigned && (
+        <div className="note"><Icon name="info" /><p>Ahora entrenas con <b>{assignedProgram.shortName}</b>, la rutina que te asignó tu entrenador. Si eliges otra, dejarás de usarla; puedes volver a ella desde Rutina › Cambiar de rutina.</p></div>
       )}
       <form onSubmit={finish} noValidate aria-label="Elige tu rutina">
         <div className="stack-sm" role="group" aria-label="Rutinas">

@@ -10,10 +10,12 @@ interface Props {
   number: number;
   sets: WorkoutSet[];
   feel?: Feel;
+  /** Texto propio en lugar del resumen de series (cardio final). */
+  summary?: string;
   onOpen(): void;
 }
 
-export function ExerciseRow({ ex, number, sets, feel, onOpen }: Props) {
+export function ExerciseRow({ ex, number, sets, feel, summary, onOpen }: Props) {
   const done = sets.length >= ex.sets;
   const top = Math.max(0, ...sets.map(s => s.weight || 0));
   const feelLabel = FEEL_OPTIONS.find(o => o.value === feel)?.short;
@@ -21,6 +23,7 @@ export function ExerciseRow({ ex, number, sets, feel, onOpen }: Props) {
   if (done) sub = ['✓ ' + `${sets.length} de ${ex.sets} series`, top > 0 ? loadText(top, ex) : '', feelLabel || ''].filter(Boolean).join(' · ');
   else if (sets.length) sub = `◐ ${sets.length} de ${ex.sets} series`;
   else sub = `${targetText(ex)}${isTimed(ex) || !ex.rir ? '' : ` · RIR ${ex.rir}`}`;
+  if (summary) sub = (done ? '✓ ' : '') + summary;
   return (
     <button type="button" className={`xrow${done ? ' done' : sets.length ? ' part' : ''}`} onClick={onOpen} aria-label={`${number}. ${ex.name}. ${sub.replace('✓', 'Hecho:').replace('◐', 'Empezado:')}`}>
       {!done && <span className="n" aria-hidden="true">{number}</span>}

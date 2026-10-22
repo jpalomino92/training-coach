@@ -1,8 +1,8 @@
 /* El contenido de las rutinas debe coincidir literalmente con el prototipo.
    Solo se permiten el campo nuevo weightStep, el
    renombrado requireAck → requiresHealthNotice, tres poses nuevas,
-   la retirada de los ejercicios de abdominales y el trabajo de agarre
-   añadido a la rutina de hombre. La rutina de 56 años se sustituyó por
+   la retirada de los ejercicios de abdominales, el trabajo de agarre
+   añadido a la rutina de hombre y su hombro según Boulder Shoulders Bible. La rutina de 56 años se sustituyó por
    la del especialista y se comprueba aparte. */
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -25,6 +25,8 @@ const NEW_POSES: Record<string, string> = { pullover_cable: 'pullover', incline_
 const REMOVED_ABS = ['plank', 'knee_raise', 'dead_bug', 'pallof', 'side_plank', 'incline_plank'];
 /** Agarre añadido a la rutina de hombre. */
 const GRIP = ['db_hold', 'plate_pinch', 'dead_hang'];
+/** Hombro de la rutina de hombre: sale → entra (se comprueba aparte). */
+const SHOULDERS: Record<string, string> = { lateral_raise: 'cable_lateral_raise', face_pull: 'rear_delt_fly_uni' };
 const DUMBBELL = ['rdl_db', 'shoulder_press_db', 'incline_db', 'lateral_raise', 'curl_db', 'hammer_curl', 'one_arm_row', 'reverse_lunge_db', 'farmer_walk', 'db_hold'];
 
 describe('rutinas', () => {
@@ -50,6 +52,10 @@ describe('rutinas', () => {
         old.days.find((d: { id: string }) => d.id === 'F5').focus = 'Glúteo y espalda';
       }
       for (const d of cur.days) d.exercises = d.exercises.filter((e: { key: string }) => !GRIP.includes(e.key));
+      if (id === 'maleUpperLower') {
+        for (const d of old.days) d.exercises = d.exercises.filter((e: { key: string }) => !SHOULDERS[e.key]);
+        for (const d of cur.days) d.exercises = d.exercises.filter((e: { key: string }) => !Object.values(SHOULDERS).includes(e.key));
+      }
       for (const d of cur.days) for (const e of d.exercises) {
         delete e.weightStep;
         if (NEW_POSES[e.key]) e.pose = 'OLD';
@@ -129,6 +135,17 @@ describe('sin abdominales', () => {
       expect(['plank', 'knee_raise', 'dead_bug', 'pallof', 'side_plank', 'incline_plank']).not.toContain(e.key);
     }
     expect(findExerciseAnywhere('plank')?.name).toBe('Plancha frontal');
+  });
+});
+
+describe('hombro (rutina de hombre, Boulder Shoulders Bible)', () => {
+  const P = routinePrograms.maleUpperLower;
+  const at = (day: string, i: number) => P.days.find(d => d.id === day)!.exercises[i];
+  it('la elevación lateral en polea sustituye a las elevaciones laterales y el pájaro a una mano al face pull, en el mismo sitio', () => {
+    expect(at('TA', 4)).toMatchObject({ key: 'cable_lateral_raise', sets: 2, reps: { min: 8, max: 12 }, rir: '0', perSide: true, setTechnique: 'drop' });
+    expect(at('TB', 4)).toMatchObject({ key: 'rear_delt_fly_uni', sets: 2, reps: { min: 8, max: 12 }, rir: '0', perSide: true, setTechnique: 'drop' });
+    expect(P.days.flatMap(d => d.exercises.map(e => e.key))).not.toContain('lateral_raise');
+    expect(P.days.flatMap(d => d.exercises.map(e => e.key))).not.toContain('face_pull');
   });
 });
 

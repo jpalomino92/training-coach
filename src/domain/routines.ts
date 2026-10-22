@@ -6,9 +6,10 @@
    Las dos primeras están copiadas del prototipo (legacy/js/data/routines.js);
    la tercera es la rutina pautada por el especialista (ejercicios mama.xlsx).
    ========================================================== */
+import { CARDIO_MACHINES, CARDIO_SLOT } from './cardio';
 import type { Exercise, Program } from './types';
 
-type Extra = Partial<Pick<Exercise, 'perSide' | 'warn' | 'compound' | 'weightStep' | 'load' | 'noWeight' | 'group' | 'videoUrl'>>;
+type Extra = Partial<Pick<Exercise, 'perSide' | 'warn' | 'compound' | 'weightStep' | 'load' | 'noWeight' | 'group' | 'videoUrl' | 'setTechnique'>>;
 
 /** Paso de peso por defecto (kg) para los botones − / +. */
 export const DEFAULT_WEIGHT_STEP = 2.5;
@@ -16,7 +17,7 @@ export const DEFAULT_WEIGHT_STEP = 2.5;
 /**
  * E(key, nombre, series, rango, rir, descanso(s), pose, músculo, técnica, alternativa, extra)
  * rango: '8-12' (repeticiones), '30-45s' (segundos) o '7min' (minutos)
- * extra: { perSide, warn, compound, weightStep, load, noWeight, group, videoUrl }
+ * extra: { perSide, warn, compound, weightStep, load, noWeight, group, videoUrl, setTechnique }
  * `key` identifica el ejercicio para el historial y el progreso.
  */
 function E(key: string, name: string, sets: number, range: string, rir: string, rest: number, pose: string, muscle: string, cue: string, alt: string, extra?: Extra): Exercise {
@@ -93,7 +94,8 @@ const lumbarCircuit = (rounds: number, group: string): Exercise[] => [
 export const routinePrograms: Record<string, Program> = {
 
   /* ------------------------------------------------------
-     PROGRAMA ORIGINAL (hombre) — sin abdominales y con trabajo de agarre
+     PROGRAMA ORIGINAL (hombre) — sin abdominales, con trabajo de agarre
+     y hombro según Boulder Shoulders Bible (2 series al fallo)
      ------------------------------------------------------ */
   maleUpperLower: {
     id: 'maleUpperLower',
@@ -128,7 +130,7 @@ export const routinePrograms: Record<string, Program> = {
         E('row_bar', 'Remo con barra', 4, '8-10', '2', 150, 'row', 'Dorsales y espalda media', 'Espalda neutra, torso inclinado. Tira la barra hacia el ombligo.', 'Remo en máquina', { compound: true }),
         E('shoulder_press_db', 'Press militar con mancuernas', 3, '8-10', '2', 90, 'ohp', 'Deltoides', 'Abdomen firme, sin arquear la espalda. Sube hasta casi estirar.', 'Press de hombros en máquina', { compound: true, weightStep: 1 }),
         E('lat_pulldown', 'Jalón al pecho', 3, '10-12', '2', 90, 'pullup', 'Dorsales', 'Lleva los codos hacia las costillas, pecho hacia la barra.', 'Dominadas asistidas'),
-        E('lateral_raise', 'Elevaciones laterales', 3, '12-15', '1-2', 60, 'lateral', 'Deltoide lateral', 'Codos ligeramente flexionados. Sube hasta la altura del hombro.', 'Elevación lateral en polea', { weightStep: 1 }),
+        E('cable_lateral_raise', 'Elevación lateral en polea a una mano', 2, '8-12', '0', 90, 'lateral', 'Deltoide lateral', 'Polea a la altura del muslo. De lado a la polea, agarra con la mano más alejada para que el cable cruce por delante. Empuja el brazo hacia la pared en vez de tirar hacia arriba, con el hombro abajo, hasta la altura del hombro. Baja controlando. Si se tensa el cuello, estás encogiendo: baja el peso.', 'Elevaciones laterales con mancuernas', { perSide: true, setTechnique: 'drop' }),
         E('curl_db', 'Curl de bíceps', 3, '10-12', '1-2', 60, 'curl', 'Bíceps', 'Codos quietos pegados al cuerpo. Puedes hacerlo en superserie con el tríceps.', 'Curl en polea baja', { weightStep: 1 }),
         E('triceps_pushdown', 'Tríceps en polea', 3, '10-12', '1-2', 60, 'pushdown', 'Tríceps', 'Codos fijos a los lados. Estira del todo abajo.', 'Extensión con mancuerna')
       ]},
@@ -145,7 +147,7 @@ export const routinePrograms: Record<string, Program> = {
         E('pullup', 'Dominadas o jalón', 4, '6-10', '2', 150, 'pullup', 'Dorsales', 'Empieza colgado con brazos estirados. Pecho hacia la barra.', 'Dominadas asistidas', { compound: true }),
         E('cable_row', 'Remo en polea baja', 3, '10-12', '2', 90, 'cablerow', 'Espalda media', 'Torso quieto. Junta las escápulas al final del tirón.', 'Remo en máquina'),
         E('dips', 'Fondos o press en máquina', 3, '8-10', '2', 90, 'dips', 'Pectoral y tríceps', 'Inclínate un poco hacia delante. Baja hasta que el codo forme 90°.', 'Press de pecho en máquina'),
-        E('face_pull', 'Face pull', 3, '12-15', '2', 60, 'facepull', 'Deltoide posterior', 'Tira de la cuerda hacia la frente, abriendo las manos.', 'Pájaros con mancuernas'),
+        E('rear_delt_fly_uni', 'Pájaro a una mano en pec deck', 2, '8-12', '0', 90, 'reversefly', 'Deltoide posterior', 'Siéntate de lado en el pec deck y cruza el brazo por delante del cuerpo para agarrar el asa: el deltoide posterior empieza estirado. Lleva el codo por delante y barre el brazo hacia fuera y atrás en un arco amplio. Vuelve controlando y para antes de que las placas toquen. No juntes la escápula para mover el peso: solo se mueve el brazo.', 'Pájaro a una mano en polea', { perSide: true, setTechnique: 'drop' }),
         E('hammer_curl', 'Curl martillo', 3, '10-12', '1-2', 60, 'curl', 'Bíceps y braquial', 'Agarre neutro, como sosteniendo un martillo.', 'Curl con cuerda en polea', { weightStep: 1 }),
         E('triceps_ext', 'Extensión de tríceps', 3, '10-12', '1-2', 60, 'pushdown', 'Tríceps', 'Codos fijos. Estira del todo en cada repetición.', 'Tríceps en polea'),
         E('dead_hang', 'Colgarse de la barra', 3, '20-90s', '0', 90, 'pullup', 'Agarre, antebrazo y hombros', 'Agarre a la anchura de los hombros y brazos estirados, con los hombros un poco activos para no colgar de las articulaciones. Aguanta lo máximo que puedas y baja apoyando los pies, sin soltarte de golpe.', 'Colgarse con los pies apoyados en un banco')
@@ -246,6 +248,8 @@ export const routinePrograms: Record<string, Program> = {
     audience: 'Mujer',
     level: 'Pautada por especialista',
     daysPerWeek: '4',
+    // El cardio ya lo pauta el especialista
+    cardioFinisher: false,
     description: 'Cuatro sesiones pautadas por tu especialista: tren inferior con énfasis en cuádriceps y aductores, tren superior, cardio con zona lumbar y flexibilidad, y tren inferior con énfasis en isquiosurales y glúteos.',
     intensity: 'Usa los bloques, el peso y el ritmo que indica cada ejercicio. Termina cada serie con 2–3 repeticiones en reserva y nunca llegues al fallo.',
     progression: { minRirToProgress: 2, cautious: true, step: 'el incremento mínimo disponible (1 bloque o 1 kg)' },
@@ -378,5 +382,5 @@ const RETIRED_EXERCISES: Exercise[] = [
 
 export function findExerciseAnywhere(key: string): Exercise | null {
   for (const p of programList()) { const e = findExercise(p, key); if (e) return e; }
-  return RETIRED_EXERCISES.find(e => e.key === key) || null;
+  return RETIRED_EXERCISES.find(e => e.key === key) || CARDIO_MACHINES.find(e => e.key === key) || (key === CARDIO_SLOT.key ? CARDIO_SLOT : null);
 }

@@ -4,6 +4,8 @@ export type DayColor = 'red' | 'blue' | 'yellow' | 'green' | 'black';
 /** reps, segundos o minutos (cardio). */
 export type Unit = 'reps' | 's' | 'min';
 export type Feel = 'ok' | 'muscle' | 'pain';
+/** Técnica de la serie 2 en el sistema de 2 series (serie 1 al fallo, serie 2 más allá del fallo). */
+export type SetTechnique = 'drop' | 'myo' | 'restpause';
 export type ThemePref = 'auto' | 'light' | 'dark';
 
 export interface Exercise {
@@ -31,6 +33,10 @@ export interface Exercise {
   group?: string;
   /** Vídeo propio del ejercicio (p. ej. el del especialista). */
   videoUrl?: string;
+  /** Sistema de 2 series: la serie 1 es pesada al fallo y la 2 baja el peso y usa esta técnica. */
+  setTechnique?: SetTechnique;
+  /** Bloque de cardio final: se registran tramos de máquinas (ver domain/cardio.ts). */
+  cardioSlot?: boolean;
   /** Ejercicios de ExerciseDB (rutinas propias del entrenador). */
   exercisedbId?: string;
   gifUrl?: string;
@@ -76,6 +82,8 @@ export interface Program {
   cardio: string;
   tips: string[];
   days: WorkoutDay[];
+  /** false: sin el cardio final que se añade al final de cada día. */
+  cardioFinisher?: boolean;
   /** Rutina creada por un entrenador (custom_programs). */
   custom?: boolean;
   coachName?: string;
@@ -103,6 +111,11 @@ export interface Prefs {
   acks?: Record<string, string>;
   /** Semana tipo elegida por la persona para cada rutina: { programId: weekPlan }. Sin valor, la de la rutina. */
   week_plans?: Record<string, [string, string | null][]>;
+  /**
+   * Rutina asignada por el entrenador que la persona dejó de lado para usar la suya (routine_id).
+   * Si el entrenador asigna otra rutina distinta, vuelve a mandar la asignada.
+   */
+  own_routine_over?: string;
   /** Biseries elegidas por la persona, por `${programId}:${dayId}`. */
   supersets?: Record<string, SupersetPrefs>;
 }

@@ -12,6 +12,19 @@ const s = (workout_id: string, exercise_key: string, set_index: number, weight: 
   ({ id: `${workout_id}-${exercise_key}-${set_index}`, user_id: 'u', workout_id, exercise_key, set_index, weight, reps, rir, created_at: '', updated_at: '' });
 const data = (workouts: Workout[], sets: WorkoutSet[] = []): UserData => ({ profile: null, workouts, sets, notes: {}, bodyWeights: [] });
 
+describe('historial entre rutinas', () => {
+  const F = routinePrograms.femaleFatLossMuscle;
+  it('un ejercicio que se repite en otra rutina sigue con su última sesión y su progreso', () => {
+    const old: Workout = { ...w('f1', 'F1', 'completed', '2026-09-08T10:00:00', '2026-09-08T11:00:00'), program_id: F.id };
+    const d = data([old], [s('f1', 'hip_thrust', 0, 60, 10)]);
+    expect(lastSessionFor(d, 'hip_thrust')?.workout.id).toBe('f1');
+    const pr = exerciseProgress(d, P, '2026-09-01').find(x => x.ex.key === 'hip_thrust');
+    expect(pr).toMatchObject({ last: 60, day: { id: 'PB' } });
+    // Los días de la otra rutina no cuentan como entrenamiento de esta
+    expect(activeWorkout(d, P, 'F1', day('2026-09-08T12:00:00'))).toBeNull();
+  });
+});
+
 describe('selectores de entrenamiento', () => {
   it('día por defecto: el primero si no hay nada', () => {
     expect(defaultDayId(data([]), P)).toBe('PA');
@@ -38,9 +51,9 @@ describe('selectores de entrenamiento', () => {
       [w('a', 'PA', 'completed', '2026-09-08T10:00:00', '2026-09-08T11:00:00'), w('b', 'PA', 'completed', '2026-09-15T10:00:00', '2026-09-15T11:00:00'), w('c', 'PA', 'in_progress', '2026-09-22T10:00:00')],
       [s('a', ex.key, 0, 50, 8), s('b', ex.key + '__alt', 0, 40, 10)]
     );
-    expect(lastUsedAlternative(d, P, ex, 'c')).toBe(true);
-    expect(lastUsedAlternative(d, P, ex, 'b')).toBe(false);
-    expect(lastUsedAlternative(data([]), P, ex)).toBe(false);
+    expect(lastUsedAlternative(d, ex, 'c')).toBe(true);
+    expect(lastUsedAlternative(d, ex, 'b')).toBe(false);
+    expect(lastUsedAlternative(data([]), ex)).toBe(false);
   });
 
   it('última sesión excluye el entrenamiento de hoy', () => {
@@ -48,7 +61,7 @@ describe('selectores de entrenamiento', () => {
       [w('old', 'PA', 'completed', '2026-09-10T10:00:00', '2026-09-10T11:00:00'), w('now', 'PA', 'in_progress', '2026-09-17T10:00:00')],
       [s('old', 'squat_bar', 0, 80, 8), s('now', 'squat_bar', 0, 82.5, 8)]
     );
-    expect(lastSessionFor(d, P, 'squat_bar', 'now')!.workout.id).toBe('old');
+    expect(lastSessionFor(d, 'squat_bar', 'now')!.workout.id).toBe('old');
   });
 
   it('relleno de serie: reps y RIR de la misma serie de la última sesión; peso de la serie anterior de hoy', () => {
@@ -80,5 +93,17 @@ describe('selectores de entrenamiento', () => {
     expect(pr.last).toBe(85);
     expect(pr.max).toBe(85);
     expect(exerciseProgress(d, P, '2026-09-01', 'TA')).toHaveLength(0);
+  });
+});
+
+describe('sistema de 2 series: relleno de la serie 2', () => {
+  const e = { ...P.days.find(d => d.id === 'TA')!.exercises.find(x => x.key === 'cable_lateral_raise')! };
+  const today = [s('now', e.key, 0, 20, 10, 0)];
+  it('sin sesión anterior: un 35 % menos que la serie 1 de hoy', () => {
+    expect(prefillFor(e, 1, today, null)).toMatchObject({ weight: 12.5, reps: null });
+  });
+  it('con sesión anterior: la serie 2 de la última vez', () => {
+    const last = { workout: w('old', 'TA', 'completed', '2026-09-08T10:00:00', '2026-09-08T11:00:00'), sets: [s('old', e.key, 0, 20, 9, 0), s('old', e.key, 1, 12.5, 14, 0)] };
+    expect(prefillFor(e, 1, today, last)).toMatchObject({ weight: 12.5, reps: 14 });
   });
 });

@@ -1,6 +1,7 @@
 /* Resumen de un entrenamiento: duración, series, volumen, récords y
    comparación con la sesión anterior del mismo día de la rutina. */
 import { resolveExercise } from './alternatives';
+import { countedSets } from './cardio';
 import { isTimed } from './format';
 import { recordSetIds } from './records';
 import { builtinLookup } from './routines';
@@ -52,8 +53,8 @@ export function workoutSummary(data: UserData, w: Workout, lookup: ProgramLookup
   // Récords de este entrenamiento, comparando con todo lo anterior de cada ejercicio
   const records: { name: string }[] = [];
   const keys = [...new Set(sets.map(s => s.exercise_key))];
-  const programWorkouts = data.workouts.filter(x => x.program_id === w.program_id);
-  const order = new Map(programWorkouts.map(x => [x.id, when(x)]));
+  // Con todo lo anterior de cualquier rutina: los ejercicios que se repiten conservan sus récords
+  const order = new Map(data.workouts.map(x => [x.id, when(x)]));
   for (const key of keys) {
     const ex = resolveExercise(program, key);
     if (!ex) continue;
@@ -68,11 +69,11 @@ export function workoutSummary(data: UserData, w: Workout, lookup: ProgramLookup
 
   return {
     minutes: minutes != null && minutes >= 1 && minutes <= 300 ? minutes : null,
-    sets: sets.length,
+    sets: countedSets(sets),
     total: day ? totalSets(day) : sets.length,
     volume: Math.round(volumeOf(sets)),
     approx,
-    previous: prevW ? { date: prevW.completed_at || prevW.started_at, volume: Math.round(volumeOf(prevSets)), sets: prevSets.length } : null,
+    previous: prevW ? { date: prevW.completed_at || prevW.started_at, volume: Math.round(volumeOf(prevSets)), sets: countedSets(prevSets) } : null,
     records,
     pain
   };

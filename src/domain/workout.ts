@@ -1,9 +1,11 @@
 /* Selectores puros sobre los datos del usuario. No dependen de React. */
 import { altExercise, altKey } from './alternatives';
+import { isCardioMachineKey } from './cardio';
 import { weekStart } from './consistency';
 import { DAY_MS, isTimed, sameDay, toDate } from './format';
 import { findExercise } from './routines';
 import { summarize } from './progression';
+import { secondSetWeight } from './setTechnique';
 import type { Exercise, Program, UserData, Workout, WorkoutDay, WorkoutSet } from './types';
 
 export const byStartDesc = (a: Workout, b: Workout) => +new Date(b.started_at) - +new Date(a.started_at);
@@ -22,9 +24,12 @@ export function activeWorkout(data: UserData, program: Program, dayId: string, n
 
 export interface LastSession { workout: Workout; sets: WorkoutSet[] }
 
-/** Última sesión (de este programa) en la que se registró el ejercicio. */
-export function lastSessionFor(data: UserData, program: Program, key: string, excludeWorkoutId?: string | null): LastSession | null {
-  const list = programWorkouts(data, program).filter(w => w.id !== excludeWorkoutId).sort(byStartDesc);
+/**
+ * Última sesión en la que se registró el ejercicio, en cualquier rutina:
+ * al cambiar de rutina, los ejercicios que se repiten conservan su historial.
+ */
+export function lastSessionFor(data: UserData, key: string, excludeWorkoutId?: string | null): LastSession | null {
+  const list = data.workouts.filter(w => w.id !== excludeWorkoutId).sort(byStartDesc);
   for (const w of list) {
     const sets = setsOf(data, w.id).filter(s => s.exercise_key === key).sort((a, b) => a.set_index - b.set_index);
     if (sets.length) return { workout: w, sets };
@@ -50,6 +55,8 @@ export const dayStatus = (w: Workout | null): DayStatus => (!w ? 'none' : w.stat
 
 /** Un ejercicio está hecho si todas sus series están registradas (con el ejercicio o con su alternativa). */
 export function isExerciseDone(sets: WorkoutSet[], ex: Exercise): boolean {
+  // Cardio final: hecho con el primer tramo de cualquier máquina
+  if (ex.cardioSlot) return sets.some(s => isCardioMachineKey(s.exercise_key));
   const keys = [ex.key, altKey(ex.key)];
   for (let i = 0; i < ex.sets; i++) if (!sets.some(s => keys.includes(s.exercise_key) && s.set_index === i)) return false;
   return true;
@@ -59,9 +66,9 @@ export function isExerciseDone(sets: WorkoutSet[], ex: Exercise): boolean {
  * La última vez que se hizo este ejercicio (en otro entrenamiento) fue con la alternativa.
  * Así la semana siguiente arranca con esa modalidad y la persona decide si vuelve al original.
  */
-export function lastUsedAlternative(data: UserData, program: Program, ex: Exercise, excludeWorkoutId?: string | null): boolean {
+export function lastUsedAlternative(data: UserData, ex: Exercise, excludeWorkoutId?: string | null): boolean {
   const alt = altKey(ex.key);
-  const list = programWorkouts(data, program).filter(w => w.id !== excludeWorkoutId).sort(byStartDesc);
+  const list = data.workouts.filter(w => w.id !== excludeWorkoutId).sort(byStartDesc);
   for (const w of list) {
     const ss = setsOf(data, w.id);
     if (ss.some(s => s.exercise_key === alt)) return true;
@@ -86,6 +93,12 @@ export const lastSetAt = (last: LastSession | null, index: number) =>
  */
 export function prefillFor(ex: Exercise, index: number, today: WorkoutSet[], last: LastSession | null): { weight: number | null; reps: number | null; rir: number | null; source: 'today' | 'last' | 'none' } {
   const prevToday = today.filter(s => s.exercise_key === ex.key && s.set_index < index).sort((a, b) => b.set_index - a.set_index)[0];
+  // Sistema de 2 series: la serie 2 nunca copia el peso de la serie 1 (va un 30–40 % por debajo)
+  if (ex.setTechnique && index === 1) {
+    const prev = last?.sets.find(s => s.set_index === 1);
+    if (prev) return { weight: prev.weight, reps: prev.reps, rir: prev.rir, source: 'last' };
+    if (prevToday?.weight) return { weight: secondSetWeight(ex, prevToday.weight), reps: null, rir: prevToday.rir, source: 'today' };
+  }
   const prevSet = lastSetAt(last, index);
   if (!prevToday && !prevSet) return { weight: null, reps: null, rir: null, source: 'none' };
   const ref = prevSet || prevToday!;
@@ -119,7 +132,8 @@ export const weekNumber = (date: Date | string, startDate: string) => {
 export function exerciseProgress(data: UserData, program: Program, startDate: string, dayFilter?: string | null): ExerciseProgress[] {
   const seen = new Set<string>();
   const out: ExerciseProgress[] = [];
-  const ws = programWorkouts(data, program).slice().sort((a, b) => +new Date(a.started_at) - +new Date(b.started_at));
+  // Todas las rutinas: un ejercicio que ya estaba en otra rutina sigue con su progreso
+  const ws = data.workouts.slice().sort((a, b) => +new Date(a.started_at) - +new Date(b.started_at));
   for (const day of program.days) {
     if (dayFilter && day.id !== dayFilter) continue;
     // Cada ejercicio y, si se ha usado, su alternativa (con su propio historial)

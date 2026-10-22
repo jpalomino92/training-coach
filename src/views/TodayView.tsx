@@ -13,12 +13,14 @@ import { HalfIcon, Icon } from '../components/Icon';
 import { HealthNoticeCompact, HealthNoticeFull } from '../components/HealthNotice';
 import { WorkoutNote, WorkoutSummaryCard } from '../components/WorkoutSummary';
 import { WorkoutDoneSheet } from '../components/WorkoutDoneSheet';
+import { CardioCard } from '../components/CardioCard';
+import { CARDIO_MACHINES, cardioMachine, cardioSegments, countedSets, isCardioMachineKey } from '../domain/cardio';
 import { fmtDate, fmtToday, restText } from '../domain/format';
 import { restFor } from '../domain/prefs';
 import type { Exercise, Feel, Program, SupersetPrefs } from '../domain/types';
 import { streak, weeklyCounts, weeklyGoal } from '../domain/consistency';
 import { altExercise, altKey, baseKey } from '../domain/alternatives';
-import { activeWorkout, dayStatus, isExerciseDone, lastSessionFor, lastUsedAlternative, programWorkouts, totalSets, usesAlternative } from '../domain/workout';
+import { activeWorkout, dayStatus, isExerciseDone, lastSessionFor, lastUsedAlternative, totalSets, usesAlternative } from '../domain/workout';
 import { canPair, dayUnits, doneIndexes, isGroup, nextTurn, supersetKey, unitLabel, unitRounds, withGroup, withoutUnit, withPair, type DayUnit } from '../domain/supersets';
 import { useApp, useDay } from '../state/AppContext';
 import { useTimer, vibrate } from '../state/TimerContext';
@@ -70,10 +72,15 @@ export function TodayView() {
   const confirmRef = useRef<HTMLButtonElement>(null);
 
   const total = totalSets(day);
-  const doneCount = sets.length;
+  const doneCount = countedSets(sets);
   const status = dayStatus(workout);
-  const carriedAlt = (ex: Exercise) => !!ex.alt && lastUsedAlternative(data, program, ex, workout?.id);
-  const exSets = (ex: Exercise) => sets.filter(s => s.exercise_key === ex.key).sort((a, b) => a.set_index - b.set_index);
+  const carriedAlt = (ex: Exercise) => !!ex.alt && lastUsedAlternative(data, ex, workout?.id);
+  const exSets = (ex: Exercise) => (ex.cardioSlot ? cardioSegments(sets) : sets.filter(s => s.exercise_key === ex.key).sort((a, b) => a.set_index - b.set_index));
+  const cardioSummary = (ex: Exercise) => {
+    if (!ex.cardioSlot) return undefined;
+    const seg = cardioSegments(sets);
+    return seg.length ? seg.map(s => `${cardioMachine(s.exercise_key)?.name} ${s.reps} min`).join(' · ') : 'Elige máquina y minutos';
+  };
   /** El ejercicio que se hace hoy: el de la rutina o su alternativa. */
   const variantOf = (ex: Exercise): Exercise => {
     if (usesAlternative(sets, ex)) return altExercise(ex);
@@ -179,8 +186,8 @@ export function TodayView() {
     } finally { setBusy(false); }
   });
 
-  const programIds = new Set(programWorkouts(data, program).map(w => w.id));
-  const historyOf = (key: string) => data.sets.filter(s => s.exercise_key === key && programIds.has(s.workout_id));
+  // Récords: todas las series del ejercicio, también las hechas con otras rutinas
+  const historyOf = (key: string) => data.sets.filter(s => s.exercise_key === key);
   const goal = weeklyGoal(program);
   const thisWeek = weeklyCounts(data.workouts, 1)[0].count;
   const weeks = streak(data.workouts, goal);
@@ -216,12 +223,41 @@ export function TodayView() {
     return nextSet === turn.set ? `después de ${variantOf(turn.ex).name}` : 'en la siguiente vuelta';
   };
 
+  /** Con series pendientes pide la misma confirmación que el botón de abajo. */
+  const finishFromCardio = () => {
+    if (total - doneCount <= 0) { void finish(); return; }
+    setConfirmFinish(true);
+    requestAnimationFrame(() => scrollToEl(document.querySelector('.finish'), 'center'));
+  };
+
+  /** Cardio final: tramos de máquinas; la última máquina usada y sus minutos vienen propuestos. */
+  const cardioCard = (slot: Exercise) => {
+    const lastCardio = data.sets.filter(s => isCardioMachineKey(s.exercise_key)).sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))[0];
+    const addCardio = async (key: string, minutes: number) => {
+      const machine = cardioMachine(key)!;
+      await guard(async () => {
+        const seg = cardioSegments(sets);
+        const index = seg.length ? Math.max(...seg.map(s => s.set_index)) + 1 : 0;
+        await app.recordSet(day, machine, index, { weight: null, reps: minutes, rir: null });
+        timer.stop();
+        vibrate(30);
+      });
+    };
+    return (
+      <CardioCard key={slot.key} slot={slot} number={day.exercises.indexOf(slot) + 1} total={day.exercises.length}
+        segments={cardioSegments(sets)} defaultMachine={lastCardio?.exercise_key || CARDIO_MACHINES[0].key}
+        lastMinutes={key => lastSessionFor(data, key, workout?.id)?.sets[0]?.reps ?? null}
+        onAdd={addCardio} onDelete={s => guard(() => app.removeSet(s))}
+        onFinish={workout?.status === 'in_progress' ? finishFromCardio : undefined} finishing={busy} />
+    );
+  };
+
   const cardFor = (base: Exercise, group?: { unit: DayUnit; turn: { ex: Exercise; set: number } | null }) => {
     const ex = variantOf(base);
     const isLast = !!group && group.unit.exercises[group.unit.exercises.length - 1] === base;
     const groupRest = group ? Math.max(...group.unit.exercises.map(e => restFor(variantOf(e), prefs))) : 0;
     const locked = sets.some(s => s.exercise_key === base.key || s.exercise_key === altKey(base.key));
-    const last = lastSessionFor(data, program, ex.key, workout?.id);
+    const last = lastSessionFor(data, ex.key, workout?.id);
     return (
       <ExerciseCard
         key={ex.key} ex={ex} anchor={base.key} rest={restFor(ex, prefs)} barKg={prefs.bar_kg} number={day.exercises.indexOf(base) + 1} total={day.exercises.length} program={program}
@@ -275,7 +311,7 @@ export function TodayView() {
   const rowsFor = (u: DayUnit, withFeel: boolean) => {
     const rows = u.exercises.map(ex => {
       const v = variantOf(ex);
-      return <ExerciseRow key={ex.key} ex={v} number={day.exercises.indexOf(ex) + 1} sets={exSets(v)} feel={withFeel ? workout?.feel?.[v.key] : undefined} onOpen={() => openExercise(ex.key)} />;
+      return <ExerciseRow key={ex.key} ex={v} number={day.exercises.indexOf(ex) + 1} sets={exSets(v)} feel={withFeel ? workout?.feel?.[v.key] : undefined} summary={cardioSummary(ex)} onOpen={() => openExercise(ex.key)} />;
     });
     if (!isGroup(u)) return rows;
     return (
@@ -345,7 +381,7 @@ export function TodayView() {
         {active && (
           <>
             <h3 className="sec eyebrow">Ahora</h3>
-            {isGroup(active) ? groupBlock(active) : cardFor(active.exercises[0])}
+            {isGroup(active) ? groupBlock(active) : active.exercises[0].cardioSlot ? cardioCard(active.exercises[0]) : cardFor(active.exercises[0])}
           </>
         )}
         {nextList.length > 0 && (

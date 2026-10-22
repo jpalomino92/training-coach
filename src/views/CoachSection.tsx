@@ -53,7 +53,7 @@ function JoinSheet({ initial, onClose }: { initial: string; onClose(): void }) {
 }
 
 export function CoachSection({ onOpenPanel }: { onOpenPanel(): void }) {
-  const { coachApi, coach, coachLink, assignedProgram, leaveCoach, showToast } = useApp();
+  const { coachApi, coach, coachLink, assignedProgram, usingAssigned, leaveCoach, showToast } = useApp();
   const [join, setJoin] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -88,7 +88,9 @@ export function CoachSection({ onOpenPanel }: { onOpenPanel(): void }) {
       {coachLink ? (
         <>
           <p className="coach-who"><Icon name="users" /><span><b>{coachLink.coachName}</b> ve tu progreso desde el {fmtDate(coachLink.since)}.</span></p>
-          <p className="sm">{assignedProgram ? <>Te ha asignado <b>{assignedProgram.shortName}</b>.</> : 'Todavía no te ha asignado una rutina: sigues con la tuya.'}</p>
+          <p className="sm">{assignedProgram
+            ? <>Te ha asignado <b>{assignedProgram.shortName}</b>.{!usingAssigned && ' Ahora entrenas con otra rutina; puedes volver a la suya desde Rutina › Cambiar de rutina.'}</>
+            : 'Todavía no te ha asignado una rutina: sigues con la tuya.'}</p>
           {!confirm ? (
             <Button variant="secondary" block onClick={() => setConfirm(true)}>Dejar de compartir</Button>
           ) : (

@@ -3,6 +3,7 @@
    Se guardan como un Program más (mismo formato que las incluidas),
    con id "custom:<uuid>". Las rutinas incluidas no se modifican nunca.
    ========================================================== */
+import { maxReps, unitWord } from './format';
 import { DEFAULT_WEIGHT_STEP } from './routines';
 import type { DayColor, Exercise, Program, WorkoutDay } from './types';
 
@@ -78,11 +79,11 @@ export function validateProgram(p: Program): ProgramIssue[] {
       keys.add(e.key);
       if (!e.name.trim()) out.push({ path: `days.${i}.exercises.${j}.name`, message: `${et}: ponle un nombre.` });
       if (!(e.sets >= 1 && e.sets <= 10)) out.push({ path: `days.${i}.exercises.${j}.sets`, message: `${et}: entre 1 y 10 series.` });
-      const max = e.unit === 's' ? 600 : 50;
-      if (!(e.reps.min >= 1 && e.reps.max >= e.reps.min && e.reps.max <= max)) out.push({ path: `days.${i}.exercises.${j}.reps`, message: `${et}: el rango de ${e.unit === 's' ? 'segundos' : 'repeticiones'} no es válido.` });
+      if (!(e.reps.min >= 1 && e.reps.max >= e.reps.min && e.reps.max <= maxReps(e))) out.push({ path: `days.${i}.exercises.${j}.reps`, message: `${et}: el rango de ${unitWord(e)} no es válido.` });
       if (!(e.rest >= 15 && e.rest <= 600)) out.push({ path: `days.${i}.exercises.${j}.rest`, message: `${et}: el descanso debe estar entre 15 s y 10 min.` });
       if (!(e.weightStep > 0 && e.weightStep <= 10)) out.push({ path: `days.${i}.exercises.${j}.weightStep`, message: `${et}: el paso de peso no es válido.` });
-      if (!/^\d(-\d)?$/.test(e.rir)) out.push({ path: `days.${i}.exercises.${j}.rir`, message: `${et}: el RIR tiene que ser un número o un rango (por ejemplo 2 o 2-3).` });
+      // Sin RIR (vacío) es válido: cardio, movilidad y estiramientos
+      if (!/^(\d(-\d)?)?$/.test(e.rir)) out.push({ path: `days.${i}.exercises.${j}.rir`, message: `${et}: el RIR tiene que ser un número o un rango (por ejemplo 2 o 2-3), o quedar vacío.` });
     });
   });
   if (p.safety.requiresHealthNotice) {

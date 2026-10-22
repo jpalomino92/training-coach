@@ -131,3 +131,22 @@ describe('doble progresión', () => {
     expect(sum.minRir).toBe(1);
   });
 });
+
+describe('sistema de 2 series (serie 1 al fallo, serie 2 con drop set)', () => {
+  const e = ex({ sets: 2, reps: { min: 8, max: 12 }, rir: '0', setTechnique: 'drop', weightStep: 2.5 });
+  const two = (w1: number, r1: number) => [{ set_index: 0, weight: w1, reps: r1, rir: 0 }, { set_index: 1, weight: 10, reps: 15, rir: 0 }];
+  it('primera vez: explica las dos series', () => {
+    expect(suggest(e, [], normalProg).reason).toMatch(/Serie 1: .* entre 8 y 12 .* Serie 2: baja un 30–40 % y haz drop set/);
+  });
+  it('sube cuando la serie 1 pasa del máximo, aunque el RIR sea 0', () => {
+    const s = suggest(e, two(15, 13), normalProg);
+    expect(s).toMatchObject({ level: 'up', action: 'Sube la serie 1 a 17,5 kg.', weight: 17.5 });
+    expect(s.reason).toMatch(/En la serie 2, baja a unos 10 kg y haz drop set/);
+  });
+  it('dentro del rango: mismo peso y una repetición más', () => {
+    expect(suggest(e, two(15, 10), normalProg)).toMatchObject({ level: 'hold', action: 'Mantén 15 kg en la serie 1 e intenta 11 repeticiones.' });
+  });
+  it('por debajo del mínimo: baja', () => {
+    expect(suggest(e, two(15, 6), normalProg)).toMatchObject({ level: 'down', action: 'Baja la serie 1 a 12,5 kg.' });
+  });
+});

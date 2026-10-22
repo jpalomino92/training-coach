@@ -11,6 +11,7 @@ import { baseKey, resolveExercise } from '../domain/alternatives';
 import type { ProgramLookup, Workout, WorkoutSet } from '../domain/types';
 import { recordSetIds } from '../domain/records';
 import { fmtMinutes, volumeText, workoutSummary } from '../domain/summary';
+import { countedSets } from '../domain/cardio';
 import { byStartDesc, setsOf, totalSets } from '../domain/workout';
 import { useApp } from '../state/AppContext';
 
@@ -47,8 +48,8 @@ function HistoryCard({ w, sets, open, onToggle, records }: { w: Workout; sets: W
   const dateIso = w.completed_at || w.started_at;
   const title = `${fmtWeekdayShort(dateIso)} · ${day ? `${day.name} — ${day.focus}` : w.day_id}`;
   const statusText = w.status === 'completed'
-    ? (sets.length >= total ? `✓ Completado · ${sets.length} series` : `◐ Terminado con ${sets.length} de ${total} series`)
-    : `◐ En progreso · ${sets.length} de ${total} series`;
+    ? (countedSets(sets) >= total ? `✓ Completado · ${countedSets(sets)} series` : `◐ Terminado con ${countedSets(sets)} de ${total} series`)
+    : `◐ En progreso · ${countedSets(sets)} de ${total} series`;
   const keys = [...new Set(sets.map(s => s.exercise_key))];
   const order = (k: string) => day?.exercises.findIndex(e => e.key === baseKey(k)) ?? 0;
   keys.sort((a, b) => order(a) - order(b));

@@ -52,7 +52,7 @@ const THEMES: { value: ThemePref; label: string }[] = [
 ];
 
 export function ProfileView() {
-  const { profile, user, data, program, updatePrefs, setEditingProfile, signOut, showToast, mode, lookup, assignedProgram, coachLink } = useApp();
+  const { profile, user, data, program, updatePrefs, setEditingProfile, signOut, showToast, mode, lookup, assignedProgram, usingAssigned, coachLink } = useApp();
   const [panel, setPanel] = useState(false);
   const { draft, save } = useSettings();
   const [exportText, setExportText] = useState<string | null>(null);
@@ -86,9 +86,9 @@ export function ProfileView() {
     ['Sexo', profile.sex || '—'],
     ['Objetivo', profile.goal || '—'],
     ['Nivel', profile.level || '—'],
-    ['Rutina', `${program.shortName} · ${program.daysPerWeek} días${assignedProgram ? ` · asignada por ${coachLink?.coachName || assignedProgram.coachName || 'tu entrenador'}` : ''}`]
+    ['Rutina', `${program.shortName} · ${program.daysPerWeek} días${usingAssigned && assignedProgram ? ` · asignada por ${coachLink?.coachName || assignedProgram.coachName || 'tu entrenador'}` : ''}`]
   ];
-  const ackAt = assignedProgram ? draft.acks?.[assignedProgram.id] : profile.health_notice_ack_at;
+  const ackAt = usingAssigned && assignedProgram ? draft.acks?.[assignedProgram.id] : profile.health_notice_ack_at;
   if (program.safety.requiresHealthNotice && ackAt) rows.push(['Aviso de salud', `Aceptado el ${fmtDate(ackAt)}`]);
 
   return (

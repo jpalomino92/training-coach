@@ -194,7 +194,7 @@ export function ProgramEditor({ initial, isNew, onClose, onSaved }: Props) {
               {d.exercises.map((e, j) => (
                 <li key={e.key} className={hasIssue(`days.${i}.exercises.${j}`) ? 'has-issue' : ''}>
                   <ExerciseIllustration pose={e.pose} size="xs" imageSrc={e.gifUrl} />
-                  <span className="tx"><b>{e.name}</b><span className="sm muted">{targetText(e)} · RIR {e.rir}</span></span>
+                  <span className="tx"><b>{e.name}</b><span className="sm muted">{targetText(e)}{e.rir && ` · RIR ${e.rir}`}{e.group && ' · en biserie'}</span></span>
                   <span className="acts">
                     <button type="button" className="icon-btn" onClick={() => up(q => { q.days[i].exercises = move(q.days[i].exercises, j, -1); })} aria-label={`Subir ${e.name}`} aria-disabled={j === 0 || undefined}><Icon name="up" /></button>
                     <button type="button" className="icon-btn" onClick={() => up(q => { q.days[i].exercises = move(q.days[i].exercises, j, 1); })} aria-label={`Bajar ${e.name}`} aria-disabled={j === d.exercises.length - 1 || undefined}><Icon name="down" /></button>
