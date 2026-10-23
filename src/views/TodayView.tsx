@@ -15,11 +15,15 @@ import { WorkoutNote, WorkoutSummaryCard } from '../components/WorkoutSummary';
 import { WorkoutDoneSheet } from '../components/WorkoutDoneSheet';
 import { CardioCard } from '../components/CardioCard';
 import { CARDIO_MACHINES, cardioMachine, cardioSegments, countedSets, isCardioMachineKey } from '../domain/cardio';
-import { fmtDate, fmtToday, restText } from '../domain/format';
+import { fmtDate, fmtToday, loadText, restText } from '../domain/format';
 import { restFor } from '../domain/prefs';
 import type { Exercise, Feel, Program, SupersetPrefs } from '../domain/types';
 import { streak, weeklyCounts, weeklyGoal } from '../domain/consistency';
 import { altExercise, altKey, baseKey } from '../domain/alternatives';
+import { ghostFor } from '../domain/ghost';
+import { activePlan, deloadWeight, isDeloadWeek, isDeloadWorkout, shouldSuggestDeload, stallFor, thisWeekKey } from '../domain/stagnation';
+import type { Suggestion } from '../domain/progression';
+import type { StallPlan } from '../domain/types';
 import { activeWorkout, dayStatus, isExerciseDone, lastSessionFor, lastUsedAlternative, totalSets, usesAlternative } from '../domain/workout';
 import { canPair, dayUnits, doneIndexes, isGroup, nextTurn, supersetKey, unitLabel, unitRounds, withGroup, withoutUnit, withPair, type DayUnit } from '../domain/supersets';
 import { useApp, useDay } from '../state/AppContext';
@@ -74,6 +78,11 @@ export function TodayView() {
   const total = totalSets(day);
   const doneCount = countedSets(sets);
   const status = dayStatus(workout);
+  const deloadNow = isDeloadWeek(prefs);
+  const skipDeload = isDeloadWorkout(prefs);
+  const deloadOffer = workout?.status === 'completed' ? null : shouldSuggestDeload(data, prefs);
+  const savePrefs = (patch: Parameters<typeof app.updateSettings>[0], msg: string) => guard(async () => { await app.updateSettings(patch); showToast(msg); });
+  const setPlan = (key: string, plan: StallPlan, msg: string) => savePrefs({ stall_plans: { ...(prefs.stall_plans || {}), [key]: plan } }, msg);
   const carriedAlt = (ex: Exercise) => !!ex.alt && lastUsedAlternative(data, ex, workout?.id);
   const exSets = (ex: Exercise) => (ex.cardioSlot ? cardioSegments(sets) : sets.filter(s => s.exercise_key === ex.key).sort((a, b) => a.set_index - b.set_index));
   const cardioSummary = (ex: Exercise) => {
@@ -252,6 +261,30 @@ export function TodayView() {
     );
   };
 
+  /** Estancamiento, plan de reinicio y semana de descarga de un ejercicio. */
+  const planProps = (base: Exercise, ex: Exercise, last: ReturnType<typeof lastSessionFor>) => {
+    const plan = activePlan(prefs, ex.key);
+    const lastTop = last ? Math.max(0, ...last.sets.map(s => s.weight || 0)) : 0;
+    const resetPending = plan?.plan === 'reset' && plan.weight != null && (!last || +new Date(last.workout.started_at) < +new Date(plan.at));
+    let suggestion: Suggestion | undefined;
+    let startWeight: number | undefined;
+    if (deloadNow && lastTop > 0 && !ex.noWeight) {
+      startWeight = deloadWeight(ex, lastTop);
+      suggestion = { level: 'down', action: `Semana de descarga: usa unos ${loadText(startWeight, ex)}.`, reason: 'Un 10 % menos que la última vez y deja 3–4 repeticiones en reserva. Esta semana no cuenta para el fantasma.' };
+    } else if (resetPending) {
+      startWeight = plan!.weight;
+      suggestion = { level: 'down', action: `Reinicio: empieza con ${loadText(plan!.weight!, ex)}.`, reason: 'Es un 10 % menos que tu mejor marca. Sube de a poco con la progresión de siempre: en unas semanas deberías superarla.' };
+    }
+    const st = deloadNow || ex.key !== base.key ? null : stallFor(data, ex, prefs);
+    const stall = st ? {
+      stall: st, alternative: base.alt || undefined,
+      onReset: st.resetWeight != null ? () => setPlan(ex.key, { plan: 'reset', at: new Date().toISOString(), weight: st.resetWeight! }, 'Plan guardado: reinicio con un 10 % menos.') : undefined,
+      onAlt: base.alt ? () => { setAltChoice(m => ({ ...m, [`${day.id}:${base.key}`]: true })); void setPlan(ex.key, { plan: 'alt', at: new Date().toISOString() }, `Plan guardado: ${base.alt} durante unas semanas.`); } : undefined,
+      onDismiss: () => setPlan(ex.key, { plan: 'dismiss', at: new Date().toISOString() }, 'De acuerdo. Te volveré a avisar si sigue estancado.')
+    } : undefined;
+    return { suggestion, startWeight, stall };
+  };
+
   const cardFor = (base: Exercise, group?: { unit: DayUnit; turn: { ex: Exercise; set: number } | null }) => {
     const ex = variantOf(base);
     const isLast = !!group && group.unit.exercises[group.unit.exercises.length - 1] === base;
@@ -268,6 +301,9 @@ export function TodayView() {
         } : undefined}
         sets={exSets(ex)} history={historyOf(ex.key)} last={last} lastFeel={last?.workout.feel?.[ex.key]} feel={workout?.feel?.[ex.key]}
         note={data.notes[ex.key]?.note || ''} next={group ? null : nextAfterActive}
+        ghost={prefs.ghost && !deloadNow ? ghostFor(data, ex.key, workout?.id, Date.now(), skipDeload) : null}
+        {...planProps(base, ex, last)}
+        warmup={prefs.warmup}
         waitFor={group ? waitText(base, group.turn) : undefined}
         restLabel={group ? (isLast ? `Descanso ${restText(groupRest)} al terminar la vuelta` : 'Sin descanso') : undefined}
         superset={group ? undefined : supersetAction(unitOf(base.key)!)}
@@ -348,6 +384,24 @@ export function TodayView() {
       </header>
 
       <HealthNoticeCompact safety={program.safety} />
+
+      {deloadOffer != null && (
+        <section className="card deload" aria-labelledby="deload-t">
+          <h2 className="h3" id="deload-t">¿Semana de descarga?</h2>
+          <p className="sm">Llevas {deloadOffer} semanas seguidas entrenando. Una semana más suave (10 % menos de peso y 3–4 repeticiones en reserva) ayuda a recuperarte y a seguir progresando.</p>
+          <div className="btn-row">
+            <Button variant="secondary" onClick={() => savePrefs({ deload_dismissed: thisWeekKey() }, 'Seguimos normal esta semana.')}>Ahora no</Button>
+            <Button variant="primary" onClick={() => savePrefs({ deload_weeks: [...(prefs.deload_weeks || []), thisWeekKey()] }, 'Semana de descarga activada.')}>Hacer descarga</Button>
+          </div>
+        </section>
+      )}
+      {deloadNow && (
+        <section className="card deload on" aria-labelledby="deload-t">
+          <h2 className="h3" id="deload-t">Semana de descarga</h2>
+          <p className="sm">Usa un 10 % menos de peso y deja 3–4 repeticiones en reserva. Esta semana no cuenta para el fantasma ni para el estancamiento.</p>
+          <button type="button" className="btn btn-link" onClick={() => savePrefs({ deload_weeks: (prefs.deload_weeks || []).filter(w => w !== thisWeekKey()) }, 'Descarga cancelada.')}>Cancelar la descarga</button>
+        </section>
+      )}
 
       <div className="discs" role="group" aria-label="Elegir día">
         {program.days.map(d => (

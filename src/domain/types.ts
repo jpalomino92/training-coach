@@ -107,6 +107,16 @@ export interface Prefs {
   keep_awake: boolean;
   /** Peso de la barra para la calculadora de discos (kg). */
   bar_kg: number;
+  /** Comparar cada serie con el fantasma (tu sesión de hace un mes). */
+  ghost: boolean;
+  /** Mostrar las series de calentamiento en los básicos. */
+  warmup: boolean;
+  /** Plan elegido para un ejercicio estancado: { clave: plan }. */
+  stall_plans?: Record<string, StallPlan>;
+  /** Semanas de descarga (lunes, YYYY-MM-DD). No cuentan para el fantasma ni el estancamiento. */
+  deload_weeks?: string[];
+  /** Semana (lunes) en la que se descartó la propuesta de descarga. */
+  deload_dismissed?: string;
   /** Fecha en que se aceptó el aviso de salud de cada rutina asignada: { programId: iso } */
   acks?: Record<string, string>;
   /** Semana tipo elegida por la persona para cada rutina: { programId: weekPlan }. Sin valor, la de la rutina. */
@@ -118,6 +128,14 @@ export interface Prefs {
   own_routine_over?: string;
   /** Biseries elegidas por la persona, por `${programId}:${dayId}`. */
   supersets?: Record<string, SupersetPrefs>;
+}
+
+/** Plan para un ejercicio estancado: reinicio (−10 %), alternativa unas semanas, o "ahora no". */
+export interface StallPlan {
+  plan: 'reset' | 'alt' | 'dismiss';
+  at: string;
+  /** Peso con el que reinicia (plan reset). */
+  weight?: number;
 }
 
 export interface SupersetPrefs {

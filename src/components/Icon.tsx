@@ -6,6 +6,7 @@ const PATHS = {
   historial: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></>,
   perfil: <><circle cx="12" cy="8" r="4" /><path d="M4.5 20c1.3-3.6 4.1-5 7.5-5s6.2 1.4 7.5 5" /></>,
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
+  ghost: <><path d="M5 20V11a7 7 0 0 1 14 0v9l-2.3-1.6L14.3 20 12 18.4 9.7 20l-2.4-1.6z" /><path d="M9.5 10.5v1M14.5 10.5v1" /></>,
   chevR: <path d="M9 5l7 7-7 7" />,
   chevL: <path d="M15 5l-7 7 7 7" />,
   chevD: <path d="M5 9l7 7 7-7" />,

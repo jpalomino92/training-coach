@@ -2,6 +2,7 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { fmtNum, isTimed, loadUnit, maxReps as maxRepsOf, parseNum, repLabel, setText, unitWord } from '../domain/format';
 import { platesText } from '../domain/plates';
+import type { GhostResult } from '../domain/ghost';
 import type { Exercise, WorkoutSet } from '../domain/types';
 import { Button } from './Button';
 import { FieldError, NumberField } from './Fields';
@@ -13,14 +14,15 @@ export function SetPending({ index, wait }: { index: number; wait?: string }) {
   return <div className="set-todo">Serie {index + 1} · {wait || 'pendiente'}</div>;
 }
 
-export function SetDone({ set, ex, fresh, record, onEdit }: { set: WorkoutSet; ex: Exercise; fresh?: boolean; record?: string; onEdit(): void }) {
+export function SetDone({ set, ex, fresh, record, versus, onEdit }: { set: WorkoutSet; ex: Exercise; fresh?: boolean; record?: string; versus?: { result: GhostResult; text: string }; onEdit(): void }) {
+  const vs = versus && <span className={`ghost-vs ${versus.result}`}><Icon name="ghost" />{versus.text}</span>;
   return (
     <div className={`set-done${fresh ? ' fresh' : ''}${fresh && record ? ' pr' : ''}`}>
       <span className="ck" aria-hidden="true"><Icon name={fresh && record ? 'trophy' : 'check'} /></span>
       {fresh ? (
-        <span className="tx" role="status"><b>✓ Serie registrada</b><br />{setText(ex, set)}{record && <><br /><b className="pr-text">{record}</b></>}</span>
+        <span className="tx" role="status"><b>✓ Serie registrada</b><br />{setText(ex, set)}{record && <><br /><b className="pr-text">{record}</b></>}{vs}</span>
       ) : (
-        <span className="tx"><b>Serie {set.set_index + 1}</b> · {setText(ex, set)}</span>
+        <span className="tx"><b>Serie {set.set_index + 1}</b> · {setText(ex, set)}{vs}</span>
       )}
       <button type="button" className="btn btn-link" onClick={onEdit} aria-label={`Editar serie ${set.set_index + 1}`}>Editar</button>
     </div>
@@ -69,9 +71,11 @@ interface EditProps {
   barKg?: number;
   /** Indicación de esta serie (sistema de 2 series). */
   note?: string;
+  /** Lo que hizo el fantasma en esta serie. */
+  ghostRef?: string;
 }
 
-export function SetEditor({ ex, index, mode, initial, reference, onSubmit, onCancel, onDelete, barKg, note }: EditProps) {
+export function SetEditor({ ex, index, mode, initial, reference, onSubmit, onCancel, onDelete, barKg, note, ghostRef }: EditProps) {
   const [d, setD] = useState<SetDraft>(initial);
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
@@ -111,6 +115,7 @@ export function SetEditor({ ex, index, mode, initial, reference, onSubmit, onCan
           : reference && <span className="muted">{reference}</span>}
       </div>
       {note && <p className="set-note">{note}</p>}
+      {ghostRef && mode === 'new' && <p className="ghost-ref"><Icon name="ghost" />{ghostRef}. Supéralo.</p>}
       {!ex.noWeight && (
         <div className="w"><WeightStepper ref={weightRef} value={d.weight} step={ex.weightStep} unit={loadUnit(ex)} onChange={v => setD({ ...d, weight: v })} error={!!errors.weight} errorId={errId} />
           {barKg != null && <p className="plates" aria-live="polite">{platesText(parseNum(d.weight), barKg)}</p>}</div>

@@ -7,7 +7,9 @@ export const DEFAULT_PREFS: Prefs = {
   rest_accessory: 60,
   sound: true,
   keep_awake: false,
-  bar_kg: 20
+  bar_kg: 20,
+  ghost: true,
+  warmup: true
 };
 
 export const REST_MIN = 15;

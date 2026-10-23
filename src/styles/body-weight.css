@@ -51,3 +51,4 @@
 .cel-sum dt{font-size:16px;color:var(--ink)}
 .cel-sum dd{margin:0;font:700 22px/1.1 var(--font-display);font-variant-numeric:tabular-nums}
 @media (min-width:640px){.sheet.celebrate{top:5vh;bottom:auto;border-radius:24px;max-height:90vh}}
+.sheet.celebrate{overflow-y:auto}.sheet.celebrate>*{flex-shrink:0}

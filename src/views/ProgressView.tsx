@@ -8,8 +8,12 @@ import { streak, weeklyCounts, weeklyGoal } from '../domain/consistency';
 import { exerciseProgress, type ExerciseProgress } from '../domain/workout';
 import { useApp } from '../state/AppContext';
 import { BodyWeightPanel } from './BodyWeightPanel';
+import { stallFor } from '../domain/stagnation';
+import { GhostCard } from './GhostCard';
 
 function ProgressCard({ p }: { p: ExerciseProgress }) {
+  const { data, prefs } = useApp();
+  const stalled = !!stallFor(data, p.ex, prefs);
   const unit = p.loaded ? ` ${loadUnit(p.ex)}` : unitSuffix(p.ex) || ' reps';
   const v = (n: number) => `${fmtNum(n)}${unit}`;
   const first = p.weeks[0], last = p.weeks[p.weeks.length - 1];
@@ -18,7 +22,7 @@ function ProgressCard({ p }: { p: ExerciseProgress }) {
     <section className="card pc" data-day={p.day.color} aria-label={p.ex.name}>
       <div className="top">
         <ExerciseIllustration pose={p.ex.pose} size="md" imageSrc={p.ex.gifUrl} />
-        <div className="tx"><h3 className="t" style={{ margin: 0 }}>{p.ex.name}</h3><span className="s">{p.isAlternative ? `Alternativa de ${p.ex.alt} · ` : ''}{p.day.name} — {p.day.focus}</span></div>
+        <div className="tx"><h3 className="t" style={{ margin: 0 }}>{p.ex.name}{stalled && <span className="stall-tag">Estancado</span>}</h3><span className="s">{p.isAlternative ? `Alternativa de ${p.ex.alt} · ` : ''}{p.day.name} — {p.day.focus}</span></div>
       </div>
       <div className="g">
         <div className="stat"><b>{v(p.last)}</b><span>{p.loaded ? 'Último peso' : 'Última marca'}</span></div>
@@ -102,6 +106,7 @@ export function ProgressView() {
             <div className="card tile"><b>{weeks}</b><span>{weeks === 1 ? 'semana' : 'semanas'} desde el inicio</span><span className="xs muted">{fmtDate(profile.start_date)}</span></div>
           </div>
           <Consistency />
+          <GhostCard />
           <div className="filters" role="group" aria-label="Filtrar por día">
             <button type="button" aria-pressed={filter === null} onClick={() => setFilter(null)}>Todos</button>
             {program.days.map(d => (

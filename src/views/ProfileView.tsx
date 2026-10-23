@@ -143,6 +143,10 @@ export function ProfileView() {
 
       <section className="card" aria-labelledby="p-entreno">
         <div className="card-pad" style={{ paddingBottom: 0 }}><h2 className="eyebrow" id="p-entreno">Durante el entrenamiento</h2></div>
+        <SwitchRow title="Series de calentamiento" checked={draft.warmup}
+          description="En los básicos con carga, la escalera para llegar al peso de la serie 1." onChange={v => save({ warmup: v })} />
+        <SwitchRow title="Fantasma de hace un mes" checked={draft.ghost}
+          description="Compara cada serie con lo que hiciste en ese ejercicio hace unas 4 semanas." onChange={v => save({ ghost: v })} />
         <SwitchRow title="Sonido al terminar el descanso" checked={draft.sound}
           description="Dos pitidos cortos, además de la vibración (en iPhone no hay vibración)." onChange={v => save({ sound: v })} />
         <SwitchRow title="Mantener la pantalla encendida" checked={draft.keep_awake && wakeLockSupported()}

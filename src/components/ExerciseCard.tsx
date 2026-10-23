@@ -2,13 +2,19 @@
    Estados: activa con última sesión, sin datos previos y completa
    ("¿Cómo lo sentiste hoy?" + "Siguiente: …"). */
 import { useEffect, useId, useRef, useState } from 'react';
-import { fmtDate, restText, setText, targetText } from '../domain/format';
+import { fmtDate, loadText, restText, setText, targetText } from '../domain/format';
 import { suggest } from '../domain/progression';
 import { recordFor } from '../domain/records';
 import { BARBELL_KEYS } from '../domain/plates';
 import type { Exercise, Feel, Program, WorkoutSet } from '../domain/types';
 import { lastSetAt, prefillFor, type LastSession as Last } from '../domain/workout';
 import { setNote, TECHNIQUES } from '../domain/setTechnique';
+import type { Stall } from '../domain/stagnation';
+import type { Suggestion } from '../domain/progression';
+import { exerciseMood, ghostTarget, MOOD_TEXT, setsVersus, setVersus, type Ghost } from '../domain/ghost';
+import { GhostArt } from './GhostArt';
+import { WarmupPanel } from './WarmupPanel';
+import { needsWarmup } from '../domain/warmup';
 import { Button } from './Button';
 import { ExerciseIllustration } from './ExerciseIllustration';
 import { FeelPicker } from './FeelPicker';
@@ -55,6 +61,16 @@ export interface ExerciseCardProps {
   waitFor?: string;
   /** Texto del descanso si no es el del ejercicio (p. ej. "Sin descanso" dentro de una biserie). */
   restLabel?: string;
+  /** Ejercicio estancado y los planes para salir. */
+  stall?: { stall: Stall; alternative?: string; onReset?(): void; onAlt?(): void; onDismiss(): void };
+  /** Sugerencia que manda sobre la de progresión (plan de reinicio, semana de descarga). */
+  suggestion?: Suggestion;
+  /** Peso con el que llega la primera serie (reinicio o descarga). */
+  startWeight?: number;
+  /** Mostrar el calentamiento antes de la serie 1 (básicos con carga). */
+  warmup?: boolean;
+  /** Tu sesión de hace un mes en este ejercicio (null: sin fantasma o desactivado). */
+  ghost?: Ghost | null;
   /** Acción de biserie: hacerlo junto al siguiente ejercicio o volver al grupo de la rutina. */
   superset?: { label: string; onClick(): void };
   onRecord(index: number, v: { weight: number | null; reps: number; rir: number | null }, mode: 'new' | 'edit'): Promise<WorkoutSet | null>;
@@ -80,7 +96,9 @@ export function ExerciseCard(p: ExerciseCardProps) {
     return () => clearTimeout(t);
   }, [fresh]);
 
-  const sug = suggest(ex, last?.sets, p.program, p.lastFeel);
+  const computed = suggest(ex, last?.sets, p.program, p.lastFeel);
+  // El dolor siempre manda; si no, el plan de reinicio o la descarga
+  const sug = p.suggestion && computed.level !== 'pain' ? p.suggestion : computed;
   const lastRef = (i: number) => { const s = lastSetAt(last, i); return s ? `Última vez: ${setText(ex, { ...s, rir: null })}` : undefined; };
 
   const rows = Array.from({ length: ex.sets }, (_, i) => {
@@ -88,10 +106,11 @@ export function ExerciseCard(p: ExerciseCardProps) {
     if (i === current && !saved && editing == null && p.waitFor) return <SetPending key={`w${i}`} index={i} wait={p.waitFor} />;
     if (i === current) {
       const mode = saved ? 'edit' : 'new';
-      const initial = saved ? draftFrom(saved) : draftFrom(prefillFor(ex, i, sets, last));
+      const pre = prefillFor(ex, i, sets, last);
+      const initial = saved ? draftFrom(saved) : draftFrom(i === 0 && !sets.length && p.startWeight != null ? { ...pre, weight: p.startWeight } : pre);
       return (
-        <SetEditor key={`${ex.key}-${i}-${mode}`} ex={ex} index={i} mode={mode} initial={initial} reference={lastRef(i)}
-          barKg={BARBELL_KEYS.has(ex.key) ? p.barKg : undefined} note={setNote(ex, i)}
+        <SetEditor key={`${ex.key}-${i}-${mode}-${p.startWeight ?? ''}`} ex={ex} index={i} mode={mode} initial={initial} reference={lastRef(i)}
+          barKg={BARBELL_KEYS.has(ex.key) ? p.barKg : undefined} note={setNote(ex, i)} ghostRef={ghostTarget(ex, p.ghost ?? null, i)}
           onSubmit={async v => {
             const before = p.history;
             const rec = await p.onRecord(i, v, mode);
@@ -103,7 +122,9 @@ export function ExerciseCard(p: ExerciseCardProps) {
         />
       );
     }
-    if (saved) return <SetDone key={saved.id} set={saved} ex={ex} fresh={fresh?.id === saved.id} record={fresh?.id === saved.id ? fresh.record : undefined} onEdit={() => setEditing(i)} />;
+    const ghostSet = p.ghost?.sets.find(s => s.set_index === i);
+    if (saved) return <SetDone key={saved.id} set={saved} ex={ex} fresh={fresh?.id === saved.id} record={fresh?.id === saved.id ? fresh.record : undefined}
+      versus={ghostSet ? setVersus(ex, saved, ghostSet) : undefined} onEdit={() => setEditing(i)} />;
     return <SetPending key={`p${i}`} index={i} />;
   });
 
@@ -152,6 +173,25 @@ export function ExerciseCard(p: ExerciseCardProps) {
         </div>
       )}
 
+      {!complete && p.stall && !sets.length && (() => {
+        const st = p.stall.stall;
+        return (
+          <div className="stall" role="group" aria-label="Ejercicio estancado">
+            <p className="hd"><Icon name="alert" /><b>Este ejercicio está estancado</b></p>
+            <p className="sm">
+              {st.sessions >= 3 && <>Llevas {st.weeks} {st.weeks === 1 ? 'semana' : 'semanas'} ({st.sessions} sesiones) sin superar {setText(ex, { ...st.best, rir: null })}. </>}
+              {st.ghostLosses >= 3 && <>Tu fantasma te ganó las últimas {st.ghostLosses} sesiones. </>}
+              Prueba uno de estos planes durante 4 semanas:
+            </p>
+            <div className="stall-act">
+              {p.stall.onReset && st.resetWeight != null && <Button variant="secondary" block onClick={p.stall.onReset}>Bajar a {loadText(st.resetWeight, ex)} y volver a subir</Button>}
+              {p.stall.onAlt && p.stall.alternative && <Button variant="secondary" block onClick={p.stall.onAlt}>Pasar a la alternativa: {p.stall.alternative}</Button>}
+              <button type="button" className="btn btn-link" onClick={p.stall.onDismiss}>Ahora no</button>
+            </div>
+          </div>
+        );
+      })()}
+
       {!complete && (
         <div className="pair">
           <LastSession ex={ex} last={last} firstHint={sug.level === 'none' ? sug.reason : ''} />
@@ -160,6 +200,24 @@ export function ExerciseCard(p: ExerciseCardProps) {
               painDate={last ? fmtDate(last.workout.completed_at || last.workout.started_at) : undefined} />
           )}
         </div>
+      )}
+
+      {p.ghost && (() => {
+        const mood = exerciseMood(setsVersus(ex, sets, p.ghost), complete);
+        return (
+          <div className={`ghost-line ${mood}`}>
+            <GhostArt mood={mood} size="xs" />
+            <p>
+              <b>Tu fantasma</b> · {fmtDate(p.ghost.workout.completed_at || p.ghost.workout.started_at)}: {p.ghost.sets.map(s => setText(ex, { ...s, rir: null })).join(' / ')}
+              <span className="ghost-quote">«{MOOD_TEXT[mood]}»</span>
+            </p>
+          </div>
+        );
+      })()}
+
+      {p.warmup && !complete && !sets.length && needsWarmup(ex) && (
+        <WarmupPanel key={`${ex.key}-${p.startWeight ?? ''}`} ex={ex} barKg={BARBELL_KEYS.has(ex.key) ? p.barKg : undefined}
+          work={p.startWeight ?? prefillFor(ex, 0, sets, last).weight} />
       )}
 
       <div className="sets">{rows}</div>
