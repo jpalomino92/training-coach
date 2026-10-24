@@ -1,17 +1,24 @@
-/* RUTINA: semana tipo, días plegables con sus ejercicios y "Cómo entrenar". */
-import { useState, type ReactNode } from 'react';
+/* RUTINA: semana tipo, días plegables con sus ejercicios y "Cómo entrenar".
+   También cambiar de rutina y crear, importar o editar las propias. */
+import { useEffect, useState, type ReactNode } from 'react';
 import { Button } from '../components/Button';
 import { DiscBadge } from '../components/DayDisc';
 import { ExerciseIllustration } from '../components/ExerciseIllustration';
 import { HealthNoticeFull } from '../components/HealthNotice';
 import { Icon, type IconName } from '../components/Icon';
-import { restText, targetText } from '../domain/format';
+import { dayTitle, restText, targetText } from '../domain/format';
 import { weekPlanFor } from '../domain/prefs';
 import { PAIN_GUIDE } from '../domain/routines';
 import { dayUnits, isGroup, supersetPrefsFor, unitLabel } from '../domain/supersets';
 import { totalSets } from '../domain/workout';
 import { useApp } from '../state/AppContext';
+import type { RoutineImport } from '../domain/routineImport';
+import type { Program } from '../domain/types';
+import { ProgramEditor } from './coach/ProgramEditor';
+import { ImportRoutineSheet } from './ImportRoutineSheet';
 import { RoutinePicker } from './RoutinePicker';
+
+interface Editing { program: Program; isNew: boolean; notes?: string[]; review?: string[] }
 
 const WEEKDAY_INDEX = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const WEEKDAY_NAME: Record<string, string> = { L: 'Lunes', M: 'Martes', X: 'Miércoles', J: 'Jueves', V: 'Viernes', S: 'Sábado', D: 'Domingo' };
@@ -32,7 +39,7 @@ function Info({ icon, title, children, defaultOpen }: { icon: IconName; title: s
 }
 
 export function RoutineView() {
-  const { program, setDayId, setTab, dayId, prefs, updateSettings, showToast } = useApp();
+  const { program, setDayId, setTab, dayId, prefs, updateSettings, showToast, ownPrograms, saveOwnProgram, chooseRoutine } = useApp();
   const [openDay, setOpenDay] = useState<string | null>(dayId);
   const plan = weekPlanFor(program, prefs);
   const ownPlan = plan !== program.weekPlan;
@@ -40,6 +47,9 @@ export function RoutineView() {
   const [draft, setDraft] = useState<[string, string | null][] | null>(null);
   const [saving, setSaving] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [editing, setEditing] = useState<Editing | null>(null);
+  useEffect(() => { window.scrollTo({ top: 0 }); }, [editing]);
   const savePlan = async (next: [string, string | null][] | null) => {
     setSaving(true);
     try {
@@ -50,6 +60,32 @@ export function RoutineView() {
       showToast(next ? 'Días de entrenamiento guardados.' : 'Vuelves a la semana de la rutina.');
     } catch (e) { showToast(e instanceof Error ? e.message : 'No se pudo guardar.'); } finally { setSaving(false); }
   };
+  const reviewImport = (r: RoutineImport) => {
+    if (!r.program) return;
+    const skipped = r.errors.length ? [`${r.errors.length} ${r.errors.length === 1 ? 'fila con errores no se importó' : 'filas con errores no se importaron'}: añade esos ejercicios a mano.`] : [];
+    setImporting(false);
+    setEditing({ program: r.program, isNew: true, notes: [...skipped, ...r.notes], review: r.review });
+  };
+  // La rutina propia sin el cardio final que se añade al usarla
+  const ownCurrent = program.own ? ownPrograms.find(p => p.id === program.id) : undefined;
+
+  if (editing) {
+    const { isNew } = editing;
+    return (
+      <ProgramEditor initial={editing.program} isNew={isNew} notes={editing.notes} review={editing.review} backLabel="Rutina"
+        onClose={() => setEditing(null)}
+        onSave={saveOwnProgram}
+        onSaved={p => {
+          setEditing(null);
+          if (!isNew) { showToast('Rutina guardada.'); return; }
+          // Una rutina nueva pasa a ser la activa; desde Cambiar de rutina se puede volver a la anterior
+          chooseRoutine(p.id)
+            .then(() => showToast(`"${p.shortName}" guardada. Ahora entrenas con ella.`))
+            .catch(() => showToast(`"${p.shortName}" guardada en Mis rutinas. Elígela en Cambiar de rutina.`));
+        }} />
+    );
+  }
+
   const todayLetter = WEEKDAY_INDEX[new Date().getDay()];
   const dayOf = (id: string | null) => (id ? program.days.find(d => d.id === id) : undefined);
 
@@ -62,8 +98,12 @@ export function RoutineView() {
         <p className="sm muted">{[program.name, `${program.daysPerWeek} días por semana`, program.level].filter(Boolean).join(' · ')}</p>
         {program.custom && program.coachName && <p className="sm"><Icon name="users" className="inline-ic" /> Asignada por {program.coachName}</p>}
       </div>
-      <Button variant="secondary" block icon="rutina" onClick={() => setPicking(true)}>Cambiar de rutina</Button>
-      {picking && <RoutinePicker onClose={() => setPicking(false)} />}
+      <div className="stack-sm">
+        <Button variant="secondary" block icon="rutina" onClick={() => setPicking(true)}>Cambiar de rutina</Button>
+        {ownCurrent && <Button variant="secondary" block icon="pencil" onClick={() => setEditing({ program: ownCurrent, isNew: false })}>Editar rutina</Button>}
+      </div>
+      {picking && <RoutinePicker onClose={() => setPicking(false)} onImport={() => setImporting(true)} onEdit={(p, isNew) => setEditing({ program: p, isNew })} />}
+      {importing && <ImportRoutineSheet onClose={() => setImporting(false)} onReview={reviewImport} />}
 
       {program.safety.requiresHealthNotice && <HealthNoticeFull safety={program.safety} />}
 
@@ -111,7 +151,7 @@ export function RoutineView() {
           <button type="button" className="drow" aria-expanded={open} aria-controls={`day-${d.id}`} onClick={() => setOpenDay(open ? null : d.id)}>
             <DiscBadge day={d} size={40} />
             <span className="tx">
-              <span className="t">{d.name} — {d.focus}{d.optional ? ' (opcional)' : ''}</span>
+              <span className="t">{dayTitle(d)}{d.optional ? ' (opcional)' : ''}</span>
               <span className="s">{d.exercises.length} ejercicios · {totalSets(d)} series</span>
             </span>
             <Icon name={open ? 'chevU' : 'chevD'} />

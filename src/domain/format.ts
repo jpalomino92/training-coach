@@ -62,6 +62,9 @@ export const sameDay = (a: string | number | Date, b: string | number | Date) =>
   return x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth() && x.getDate() === y.getDate();
 };
 
+/** "Día 1 — Pierna", o solo el nombre si el día no tiene enfoque. */
+export const dayTitle = (d: { name: string; focus: string }) => (d.focus.trim() ? `${d.name} — ${d.focus}` : d.name);
+
 export const restText = (s: number) => (s <= 120 ? `${s} s` : s % 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s / 60} min`);
 /** Ejercicio por tiempo (segundos o minutos): se anota la duración, no repeticiones. */
 export const isTimed = (ex: Pick<Exercise, 'unit'>) => ex.unit !== 'reps';

@@ -6,7 +6,7 @@ import { DiscBadge } from '../components/DayDisc';
 import { ExerciseIllustration } from '../components/ExerciseIllustration';
 import { MonthCalendar } from '../components/MonthCalendar';
 import { Icon } from '../components/Icon';
-import { fmtMonthYear, fmtNum, fmtWeekdayShort, unitSuffix, weightRange } from '../domain/format';
+import { dayTitle, fmtMonthYear, fmtNum, fmtWeekdayShort, unitSuffix, weightRange } from '../domain/format';
 import { baseKey, resolveExercise } from '../domain/alternatives';
 import type { ProgramLookup, Workout, WorkoutSet } from '../domain/types';
 import { recordSetIds } from '../domain/records';
@@ -46,7 +46,7 @@ function HistoryCard({ w, sets, open, onToggle, records }: { w: Workout; sets: W
   const day = pr?.days.find(d => d.id === w.day_id);
   const total = day ? totalSets(day) : sets.length;
   const dateIso = w.completed_at || w.started_at;
-  const title = `${fmtWeekdayShort(dateIso)} · ${day ? `${day.name} — ${day.focus}` : w.day_id}`;
+  const title = `${fmtWeekdayShort(dateIso)} · ${day ? dayTitle(day) : w.day_id}`;
   const statusText = w.status === 'completed'
     ? (countedSets(sets) >= total ? `✓ Completado · ${countedSets(sets)} series` : `◐ Terminado con ${countedSets(sets)} de ${total} series`)
     : `◐ En progreso · ${countedSets(sets)} de ${total} series`;

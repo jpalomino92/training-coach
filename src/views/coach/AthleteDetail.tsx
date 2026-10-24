@@ -5,7 +5,7 @@ import { Button } from '../../components/Button';
 import { DiscBadge } from '../../components/DayDisc';
 import { Icon } from '../../components/Icon';
 import { streak, weeklyCounts, weeklyGoal } from '../../domain/consistency';
-import { fmtDate, fmtNum, fmtWeekdayShort } from '../../domain/format';
+import { dayTitle, fmtDate, fmtNum, fmtWeekdayShort } from '../../domain/format';
 import { builtinLookup, getProgram } from '../../domain/routines';
 import { fmtMinutes, volumeText, workoutSummary } from '../../domain/summary';
 import type { Program, ProgramLookup, UserData } from '../../domain/types';
@@ -128,7 +128,7 @@ export function AthleteDetail({ athlete, programs, onClose, onChanged, onRemoved
                     <li key={w.id} className="card card-pad aw">
                       <div className="aw-hd">
                         {d && <DiscBadge day={d} size={32} />}
-                        <span className="tx"><b>{fmtWeekdayShort(w.completed_at || w.started_at)}</b><span className="sm muted">{d ? `${d.name} — ${d.focus}` : w.day_id}{p ? ` · ${p.shortName}` : ''}</span></span>
+                        <span className="tx"><b>{fmtWeekdayShort(w.completed_at || w.started_at)}</b><span className="sm muted">{d ? dayTitle(d) : w.day_id}{p ? ` · ${p.shortName}` : ''}</span></span>
                       </div>
                       <p className="sm">
                         {s.sets} de {s.total} series{s.volume > 0 && ` · ${volumeText(s.volume, s.approx)}`}{s.minutes != null && ` · ${fmtMinutes(s.minutes)}`}

@@ -1,6 +1,7 @@
 /* Disco de día (como un disco olímpico). Marca de estado abajo a la derecha:
    vacía (no iniciado), a medias (en progreso) o ✓ verde (completado). */
 import type { CSSProperties } from 'react';
+import { dayTitle } from '../domain/format';
 import type { WorkoutDay } from '../domain/types';
 import type { DayStatus } from '../domain/workout';
 import { HalfIcon, Icon } from './Icon';
@@ -28,7 +29,7 @@ interface Props {
 /** Botón en el selector de Hoy. */
 export function DayDisc({ day, status, selected, onSelect, size, className }: Props) {
   const style: CSSProperties | undefined = size ? { width: size, height: size, fontSize: Math.round(size / 2.95) } : undefined;
-  const label = `${day.id}, ${day.name} — ${day.focus}${status ? `, ${STATUS_TEXT[status]}` : ''}`;
+  const label = `${day.id}, ${dayTitle(day)}${status ? `, ${STATUS_TEXT[status]}` : ''}`;
   return (
     <button type="button" className={`disc dc-${day.color} ${className || ''}`} style={style} onClick={onSelect}
       aria-current={selected ? 'true' : undefined} aria-label={label}>

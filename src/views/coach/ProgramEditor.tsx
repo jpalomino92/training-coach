@@ -1,5 +1,6 @@
 /* ==========================================================
-   Editor de rutinas propias del entrenador.
+   Editor de rutinas: las del entrenador y las propias de cada persona
+   (también para revisar una rutina importada antes de guardarla).
    Datos generales, progresión, aviso de salud opcional, semana tipo
    y días con sus ejercicios. Se valida antes de guardar.
    ========================================================== */
@@ -30,10 +31,23 @@ function move<T>(list: T[], i: number, by: number): T[] {
   return out;
 }
 
-interface Props { initial: Program; isNew: boolean; onClose(): void; onSaved(p: Program): void }
+interface Props {
+  initial: Program;
+  isNew: boolean;
+  onClose(): void;
+  /** Guarda la rutina ya validada y devuelve la guardada. */
+  onSave(p: Program): Promise<Program>;
+  onSaved(p: Program): void;
+  /** Texto del botón de volver. */
+  backLabel?: string;
+  /** Avisos de la importación, arriba del todo. */
+  notes?: string[];
+  /** Claves de ejercicios que conviene revisar (se marcan hasta editarlos). */
+  review?: string[];
+}
 
-export function ProgramEditor({ initial, isNew, onClose, onSaved }: Props) {
-  const { coachApi, coach, showToast } = useApp();
+export function ProgramEditor({ initial, isNew, onClose, onSave, onSaved, backLabel = 'Rutinas', notes, review }: Props) {
+  const { showToast } = useApp();
   const [p, setP] = useState<Program>(initial);
   const [issues, setIssues] = useState<ProgramIssue[]>([]);
   const [busy, setBusy] = useState(false);
@@ -41,9 +55,11 @@ export function ProgramEditor({ initial, isNew, onClose, onSaved }: Props) {
   const [picker, setPicker] = useState<number | null>(null);
   const [editEx, setEditEx] = useState<{ day: number; index: number; ex: Exercise } | null>(null);
   const [confirmDay, setConfirmDay] = useState<number | null>(null);
+  const [toReview, setToReview] = useState(() => new Set(review));
   const issuesRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const dirty = JSON.stringify(p) !== JSON.stringify(initial);
+  // Una rutina importada sin guardar siempre tiene cambios
+  const dirty = (isNew && !!notes) || JSON.stringify(p) !== JSON.stringify(initial);
 
   useEffect(() => { titleRef.current?.focus(); }, []);
 
@@ -51,15 +67,13 @@ export function ProgramEditor({ initial, isNew, onClose, onSaved }: Props) {
   const plan = normalizeProgram(p).weekPlan;
 
   const save = async () => {
-    const q = normalizeProgram({ ...p, coachName: coach?.displayName || p.coachName });
+    const q = normalizeProgram(p);
     const found = validateProgram(q);
     setIssues(found);
     if (found.length) { requestAnimationFrame(() => issuesRef.current?.focus()); return; }
     setBusy(true);
     try {
-      const saved = await coachApi!.saveProgram(q);
-      showToast(`"${saved.shortName}" guardada. Tus alumnos la verán al abrir la app.`);
-      onSaved(saved);
+      onSaved(await onSave(q));
     } catch (e) {
       setBusy(false);
       showToast((e instanceof Error ? e.message : '') || 'No se pudo guardar la rutina.');
@@ -79,7 +93,7 @@ export function ProgramEditor({ initial, isNew, onClose, onSaved }: Props) {
   return (
     <main className="screen coach editor">
       {!leaving ? (
-        <button type="button" className="back" onClick={() => (dirty ? setLeaving(true) : onClose())}><Icon name="chevL" />Rutinas</button>
+        <button type="button" className="back" onClick={() => (dirty ? setLeaving(true) : onClose())}><Icon name="chevL" />{backLabel}</button>
       ) : (
         <div className="confirm" role="group" aria-labelledby="leave-ed">
           <p id="leave-ed"><b>Tienes cambios sin guardar.</b> ¿Salir y descartarlos?</p>
@@ -93,6 +107,13 @@ export function ProgramEditor({ initial, isNew, onClose, onSaved }: Props) {
         <span className="eyebrow">{isNew ? 'Nueva rutina' : 'Editar rutina'}</span>
         <h1 className="h1" tabIndex={-1} ref={titleRef}>{p.shortName || p.name || 'Rutina sin nombre'}</h1>
       </div>
+
+      {notes && notes.length > 0 && (
+        <div className="note">
+          <Icon name="info" />
+          <div><p><b>Rutina importada: revísala antes de guardar.</b></p><ul className="sm">{notes.map(n => <li key={n}>{n}</li>)}</ul></div>
+        </div>
+      )}
 
       {issues.length > 0 && (
         <div className="alert issues" role="alert" tabIndex={-1} ref={issuesRef}>
@@ -192,9 +213,9 @@ export function ProgramEditor({ initial, isNew, onClose, onSaved }: Props) {
 
             <ul className="ed-exl" aria-label={`Ejercicios de ${d.name}`}>
               {d.exercises.map((e, j) => (
-                <li key={e.key} className={hasIssue(`days.${i}.exercises.${j}`) ? 'has-issue' : ''}>
+                <li key={e.key} className={hasIssue(`days.${i}.exercises.${j}`) ? 'has-issue' : toReview.has(e.key) ? 'to-review' : ''}>
                   <ExerciseIllustration pose={e.pose} size="xs" imageSrc={e.gifUrl} />
-                  <span className="tx"><b>{e.name}</b><span className="sm muted">{targetText(e)}{e.rir && ` · RIR ${e.rir}`}{e.group && ' · en biserie'}</span></span>
+                  <span className="tx"><b>{e.name}</b>{toReview.has(e.key) && <span className="review-tag">Revisar</span>}<span className="sm muted">{targetText(e)}{e.rir && ` · RIR ${e.rir}`}{e.group && ' · en biserie'}</span></span>
                   <span className="acts">
                     <button type="button" className="icon-btn" onClick={() => up(q => { q.days[i].exercises = move(q.days[i].exercises, j, -1); })} aria-label={`Subir ${e.name}`} aria-disabled={j === 0 || undefined}><Icon name="up" /></button>
                     <button type="button" className="icon-btn" onClick={() => up(q => { q.days[i].exercises = move(q.days[i].exercises, j, 1); })} aria-label={`Bajar ${e.name}`} aria-disabled={j === d.exercises.length - 1 || undefined}><Icon name="down" /></button>
@@ -237,7 +258,11 @@ export function ProgramEditor({ initial, isNew, onClose, onSaved }: Props) {
       {picker !== null && <ExercisePicker dayName={p.days[picker].name || `Día ${picker + 1}`} onClose={() => setPicker(null)} onPick={e => addExercise(picker, e)} />}
       {editEx && (
         <ExerciseEditor key={editEx.ex.key} initial={editEx.ex} onClose={() => setEditEx(null)}
-          onSave={e => { up(q => { q.days[editEx.day].exercises[editEx.index] = e; }); setEditEx(null); }} />
+          onSave={e => {
+            up(q => { q.days[editEx.day].exercises[editEx.index] = e; });
+            setToReview(s => { const n = new Set(s); n.delete(editEx.ex.key); return n; });
+            setEditEx(null);
+          }} />
       )}
     </main>
   );

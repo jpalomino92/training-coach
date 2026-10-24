@@ -27,7 +27,9 @@
 .chart .tip{pointer-events:none}
 .wlist li .v{display:flex;align-items:center;gap:12px}
 .wlist li .n{display:block;font-size:14px;color:var(--muted)}
-.sheet{max-width:640px;margin:0 auto;max-height:92vh;overflow:auto;animation:sheet-in .2s ease-out}
+.sheet{max-width:640px;margin:0 auto;max-height:92vh;max-height:92dvh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;animation:sheet-in .2s ease-out}
+/* Sin esto los hijos se encogen en lugar de desbordar y la hoja no se puede desplazar */
+.sheet>*{flex-shrink:0}
 .sheet .hd{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .sheet .stepper.big{grid-template-columns:72px minmax(0,1fr) 72px}
 .sheet .stepper.big .num-in,.sheet .stepper.big .step{height:72px}

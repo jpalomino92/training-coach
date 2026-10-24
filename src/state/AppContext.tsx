@@ -13,6 +13,8 @@ import type {
   AuthUser, BodyWeightInput, Exercise, Feel, Prefs, Profile, ProfileInput, Program, ProgramLookup, UserData, Workout, WorkoutDay, WorkoutSet
 } from '../domain/types';
 import type { CoachInfo, CoachLink, CoachService } from '../services/coach';
+import { LocalOwnPrograms, type OwnPrograms } from '../services/ownPrograms';
+import type { AiImporter } from '../services/aiImport';
 import { activeWorkout, defaultDayId, isDayDone, setsOf } from '../domain/workout';
 import { createBackend, type Backend } from '../services/backend';
 import { emptyData, isSyncSource, type Store, type SyncState } from '../services/storage/types';
@@ -57,7 +59,15 @@ export interface AppApi {
   assignedProgram: Program | null;
   /** Se entrena con la rutina asignada por el entrenador (no con una elegida por la persona). */
   usingAssigned: boolean;
-  /** Cambia la rutina activa: una incluida o la asignada por el entrenador. `ack`: se aceptó su aviso de salud. */
+  /** Leer rutinas de fotos, PDF o texto con IA (null en modo demo). */
+  aiImporter: AiImporter | null;
+  /** Rutinas propias de la persona (creadas, copiadas o importadas). */
+  ownPrograms: Program[];
+  /** Guarda (crea o actualiza) una rutina propia. */
+  saveOwnProgram(p: Program): Promise<Program>;
+  /** Elimina una rutina propia (no puede ser la que se está usando). El historial se conserva. */
+  deleteOwnProgram(id: string): Promise<void>;
+  /** Cambia la rutina activa: una incluida, una propia o la asignada por el entrenador. `ack`: se aceptó su aviso de salud. */
   chooseRoutine(id: string, ack?: boolean): Promise<void>;
   /** Vuelve a leer el entrenador y la rutina asignada. */
   refreshCoach(): Promise<void>;
@@ -114,6 +124,9 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
   const [coach, setCoach] = useState<CoachInfo | null>(null);
   const [coachLink, setCoachLink] = useState<CoachLink | null>(null);
   const [assignedProgram, setAssignedProgram] = useState<Program | null>(null);
+  const ownRef = useRef<OwnPrograms | null>(null);
+  const aiRef = useRef<AiImporter | null>(null);
+  const [ownPrograms, setOwnPrograms] = useState<Program[]>([]);
   const unsubSync = useRef<(() => void) | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -154,8 +167,12 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
   const loadUser = useCallback(async (b: Backend, u: AuthUser) => {
     const s = b.createStore(u);
     const svc = b.createCoach ? b.createCoach(u) : null;
-    const [d] = await Promise.all([s.loadAll(), loadCoach(svc)]);
+    const own = b.createOwnPrograms ? b.createOwnPrograms(u) : new LocalOwnPrograms(u.id);
+    const [d, , mine] = await Promise.all([s.loadAll(), loadCoach(svc), own.list().catch(() => [])]);
     coachRef.current = svc;
+    ownRef.current = own;
+    aiRef.current = b.createAiImporter ? b.createAiImporter(u) : null;
+    setOwnPrograms(mine);
     if (isSyncSource(s)) {
       const off1 = s.onSync(setSync);
       const off2 = s.onRejected(n => showToast(n === 1
@@ -203,11 +220,14 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
   }, [status, loadCoach]);
 
   const profile = data.profile;
-  const customs = useMemo(() => (assignedProgram ? { [assignedProgram.id]: assignedProgram } : {}), [assignedProgram]);
+  const customs = useMemo<Record<string, Program>>(() => ({
+    ...Object.fromEntries(ownPrograms.map(p => [p.id, p])),
+    ...(assignedProgram ? { [assignedProgram.id]: assignedProgram } : {})
+  }), [assignedProgram, ownPrograms]);
   const lookup = useCallback<ProgramLookup>(id => { const p = customs[id] || builtinLookup(id); return p && withCardio(p); }, [customs]);
   // La rutina asignada por el entrenador manda sobre la elegida en el perfil, salvo que la persona elija otra
   const usingAssigned = !!assignedProgram && prefsOf(profile).own_routine_over !== assignedProgram.id;
-  const program = withCardio((usingAssigned && assignedProgram) || getProgram(profile?.routine_id));
+  const program = withCardio((usingAssigned && assignedProgram) || getProgram(profile?.routine_id, customs));
   const dayId = program.days.some(d => d.id === dayIdState) ? dayIdState : defaultDayId(data, program);
 
   const setTab = useCallback((t: Tab) => {
@@ -226,7 +246,21 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
   const api: AppApi = {
     status, bootError, mode: backend?.auth.mode || 'demo', user, data, profile, program,
     tab, setTab, dayId, setDayId, editingProfile, setEditingProfile, toast, showToast, sync,
-    prefs: prefsOf(profile), lookup, coachApi: coachRef.current, coach, coachLink, assignedProgram, usingAssigned,
+    prefs: prefsOf(profile), lookup, coachApi: coachRef.current, coach, coachLink, assignedProgram, usingAssigned, ownPrograms, aiImporter: aiRef.current,
+
+    async saveOwnProgram(p) {
+      if (!ownRef.current) throw new Error('No hay sesión iniciada.');
+      const saved = await ownRef.current.save(p);
+      setOwnPrograms(list => [saved, ...list.filter(x => x.id !== saved.id)]);
+      return saved;
+    },
+    async deleteOwnProgram(id) {
+      if (!ownRef.current) throw new Error('No hay sesión iniciada.');
+      if (id === program.id) throw new Error('Es la rutina que estás usando: elige otra antes de eliminarla.');
+      await ownRef.current.remove(id);
+      setOwnPrograms(list => list.filter(x => x.id !== id));
+      if (profile?.routine_id === id) await api.chooseRoutine(getProgram(null).id).catch(() => {});
+    },
 
     async chooseRoutine(id, ack) {
       if (!data.profile) return;
@@ -276,6 +310,9 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
       await backend!.auth.signOut();
       releaseStore();
       coachRef.current = null;
+      ownRef.current = null;
+      aiRef.current = null;
+      setOwnPrograms([]);
       setCoach(null); setCoachLink(null); setAssignedProgram(null);
       if (pending) showToast(`Quedan ${pending} ${pending === 1 ? 'cambio' : 'cambios'} por enviar: se enviarán cuando vuelvas a entrar con conexión.`);
       setUser(null);

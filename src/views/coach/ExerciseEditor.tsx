@@ -58,7 +58,7 @@ export function ExerciseEditor({ initial, onSave, onClose }: { initial: Exercise
           <ExerciseIllustration pose={ex.pose} size="lg" imageSrc={ex.gifUrl} />
           {ex.exercisedbId && <p className="hint">Animación de ExerciseDB. El nombre original está en inglés: tradúcelo si quieres.</p>}
         </div>
-        <TextField label="Nombre" value={ex.name} onChange={e => set('name', e.target.value)} error={errors.name} data-autofocus maxLength={80} />
+        <TextField label="Nombre" value={ex.name} onChange={e => set('name', e.target.value)} error={errors.name} maxLength={80} />
         <TextField label="Músculo principal" value={ex.muscle} onChange={e => set('muscle', e.target.value)} maxLength={80} />
 
         <div className="ed-grid">

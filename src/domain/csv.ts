@@ -38,7 +38,7 @@ export function parseCsv(text: string): string[][] {
   return rows.map(r => r.map(c => c.trim()));
 }
 
-const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+export const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
 /** Fecha en formato local aaaa-mm-dd, o null si no es válida. */
 export function parseDate(s: string): string | null {
@@ -53,7 +53,7 @@ export function parseDate(s: string): string | null {
   return localDate(dt);
 }
 
-function columns<A extends Record<string, string[]>>(header: string[], aliases: A, required: (keyof A)[]): Record<keyof A, number> | string {
+export function columns<A extends Record<string, string[]>>(header: string[], aliases: A, required: (keyof A)[]): Record<keyof A, number> | string {
   const h = header.map(norm);
   const out = {} as Record<keyof A, number>;
   for (const key of Object.keys(aliases) as (keyof A)[]) out[key] = h.findIndex(c => aliases[key].includes(c));
@@ -177,7 +177,7 @@ const cell = (v: string | number | null | undefined) => {
   const s = v == null ? '' : typeof v === 'number' ? fmtNum(v) : v;
   return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
-const toCsv = (rows: (string | number | null | undefined)[][]) => '\uFEFF' + rows.map(r => r.map(cell).join(';')).join('\r\n') + '\r\n';
+export const toCsv = (rows: (string | number | null | undefined)[][]) => '\uFEFF' + rows.map(r => r.map(cell).join(';')).join('\r\n') + '\r\n';
 
 export function exportBodyWeightsCsv(data: Pick<UserData, 'bodyWeights'>): string {
   const rows = data.bodyWeights.slice().sort((a, b) => a.date.localeCompare(b.date)).map(b => [b.date, b.weight_kg, b.note]);

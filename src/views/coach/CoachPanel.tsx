@@ -58,7 +58,12 @@ export function CoachPanel({ onClose }: { onClose(): void }) {
     return (
       <ProgramEditor initial={editing} isNew={!programs?.some(p => p.id === editing.id)}
         onClose={() => setEditing(null)}
-        onSaved={p => { setPrograms(list => [p, ...(list || []).filter(x => x.id !== p.id)]); setEditing(null); }} />
+        onSave={p => coachApi.saveProgram({ ...p, coachName: coach.displayName || p.coachName })}
+        onSaved={p => {
+          showToast(`"${p.shortName}" guardada. Tus alumnos la verán al abrir la app.`);
+          setPrograms(list => [p, ...(list || []).filter(x => x.id !== p.id)]);
+          setEditing(null);
+        }} />
     );
   }
   if (athlete) {

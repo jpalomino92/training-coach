@@ -84,9 +84,11 @@ export interface Program {
   days: WorkoutDay[];
   /** false: sin el cardio final que se añade al final de cada día. */
   cardioFinisher?: boolean;
-  /** Rutina creada por un entrenador (custom_programs). */
+  /** Rutina creada por un entrenador (custom_programs) o por la propia persona (`own`). */
   custom?: boolean;
   coachName?: string;
+  /** Rutina propia de la persona (user_programs): creada, copiada o importada por ella. */
+  own?: boolean;
 }
 
 /** Busca una rutina (incluida o propia) por su id. */

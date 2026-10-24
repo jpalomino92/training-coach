@@ -15,7 +15,7 @@ import { WorkoutNote, WorkoutSummaryCard } from '../components/WorkoutSummary';
 import { WorkoutDoneSheet } from '../components/WorkoutDoneSheet';
 import { CardioCard } from '../components/CardioCard';
 import { CARDIO_MACHINES, cardioMachine, cardioSegments, countedSets, isCardioMachineKey } from '../domain/cardio';
-import { fmtDate, fmtToday, loadText, restText } from '../domain/format';
+import { dayTitle, fmtDate, fmtToday, loadText, restText } from '../domain/format';
 import { restFor } from '../domain/prefs';
 import type { Exercise, Feel, Program, SupersetPrefs } from '../domain/types';
 import { streak, weeklyCounts, weeklyGoal } from '../domain/consistency';
@@ -368,7 +368,7 @@ export function TodayView() {
       <div className={`compact${compact ? ' show' : ''}`} aria-hidden={!compact}>
         <div className="in">
           <DiscBadge day={day} size={36} />
-          <span className="t">{day.name} — {day.focus}</span>
+          <span className="t">{dayTitle(day)}</span>
           <span className="n">{doneCount} / {total}</span>
           <div className="bar"><i style={{ width: `${(doneCount / total) * 100}%` }} /></div>
         </div>
@@ -411,7 +411,7 @@ export function TodayView() {
       </div>
 
       <div className="dayhead" ref={headRef}>
-        <h2 className="h2"><span>{day.name} —</span> {day.focus}</h2>
+        <h2 className="h2">{day.focus.trim() ? <><span>{day.name} —</span> {day.focus}</> : day.name}</h2>
         {status === 'none' && <span className="status none"><span className="g" aria-hidden="true">○</span>No iniciado</span>}
         {status === 'prog' && <span className="status prog"><HalfIcon className="g" />En progreso · {doneCount} de {total} series</span>}
         {status === 'done' && <span className="status done"><span className="g" aria-hidden="true">✓</span>Completado el {fmtDate(workout!.completed_at)}</span>}

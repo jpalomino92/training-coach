@@ -1,19 +1,25 @@
 /* ==========================================================
-   Rutinas propias del entrenador: crear, duplicar y validar.
+   Rutinas propias del entrenador y de cada persona: crear, duplicar y validar.
    Se guardan como un Program más (mismo formato que las incluidas),
-   con id "custom:<uuid>". Las rutinas incluidas no se modifican nunca.
+   con id "custom:<uuid>" (entrenador) u "own:<uuid>" (de la persona).
+   Las rutinas incluidas no se modifican nunca.
    ========================================================== */
 import { maxReps, unitWord } from './format';
+import { uid } from '../services/uid';
 import { DEFAULT_WEIGHT_STEP } from './routines';
 import type { DayColor, Exercise, Program, WorkoutDay } from './types';
 
 export const CUSTOM_PREFIX = 'custom:';
 export const isCustomId = (id: string) => id.startsWith(CUSTOM_PREFIX);
 export const customUuid = (id: string) => id.slice(CUSTOM_PREFIX.length);
+export const OWN_PREFIX = 'own:';
+export const isOwnId = (id: string) => id.startsWith(OWN_PREFIX);
+export const ownUuid = (id: string) => id.slice(OWN_PREFIX.length);
 
 export const DAY_COLORS: DayColor[] = ['red', 'blue', 'yellow', 'green', 'black'];
 
-const uuid = () => globalThis.crypto.randomUUID();
+// uid(): también funciona fuera de HTTPS (crypto.randomUUID solo existe en contextos seguros)
+const uuid = uid;
 
 export function blankDay(index: number, existing: WorkoutDay[] = []): WorkoutDay {
   let n = index + 1;
@@ -47,6 +53,11 @@ export function blankProgram(coachName = ''): Program {
 export function duplicateProgram(p: Program, coachName = ''): Program {
   const copy: Program = structuredClone(p);
   return { ...copy, id: CUSTOM_PREFIX + uuid(), custom: true, coachName, name: `Copia de ${p.name}`, shortName: `Copia de ${p.shortName}` };
+}
+
+/** La rutina pasa a ser propia de la persona (nuevo id, sin entrenador). */
+export function asOwnProgram(p: Program): Program {
+  return { ...p, id: OWN_PREFIX + uuid(), custom: true, own: true, coachName: '' };
 }
 
 /** Plan semanal por defecto: los días seguidos desde el lunes, uno sí y otro no si caben. */

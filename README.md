@@ -76,6 +76,20 @@ Los programas son solo datos (`src/domain/routines.ts`). Para añadir uno, copia
    - `npm run test:e2e:supabase` → la app de producción (con service worker) conectada a Supabase, incluido el uso sin conexión.
    - Usan dos cuentas fijas (`SUPABASE_TEST_EMAIL` con los alias `+test-a` y `+test-b`, y `SUPABASE_TEST_PASSWORD`), que se vacían antes de cada prueba. Se crean la primera vez: en ese momento "Confirm email" tiene que estar desactivado. Supabase limita los registros por hora, por eso no se crean cuentas nuevas en cada ejecución.
 
+### Importar rutinas con IA
+
+Las rutinas en fotos, PDF o texto libre se leen con OpenAI desde la Edge Function
+`supabase/functions/import-routine` (la clave nunca llega a la app). Hay un límite de 2 lecturas por
+persona y mes, y una lectura que falla no cuenta. Importar desde Excel o CSV no usa IA y no tiene límite.
+
+1. SQL Editor: ejecuta `supabase/migrations/2026-10-24_user_programs.sql` y después `2026-10-25_ai_imports.sql`.
+2. Edge Functions → Secrets: añade `OPENAI_API_KEY` (opcional: `OPENAI_MODEL`, por defecto `gpt-5-mini`,
+   y `AI_IMPORTS_PER_MONTH`, por defecto 2).
+3. Edge Functions → Deploy a new function → Via Editor: nombre `import-routine` y pega el contenido de
+   `supabase/functions/import-routine/index.ts`. Deja activado "Verify JWT".
+   Con la CLI: `supabase functions deploy import-routine` y `supabase secrets set OPENAI_API_KEY=sk-...`.
+4. En OpenAI conviene fijar un límite de gasto mensual (Settings → Limits).
+
 ### Sin conexión
 
 En modo Supabase la app funciona sin red (`src/services/storage/offlineStore.ts`):
