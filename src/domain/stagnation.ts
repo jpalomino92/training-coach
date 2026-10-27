@@ -90,7 +90,7 @@ export function stallFor(data: UserData, ex: Exercise, prefs: Pick<Prefs, 'deloa
   return {
     weeks, sessions: since, ghostLosses,
     best: { weight: bestSession.best.weight, reps: bestSession.best.reps },
-    resetWeight: w > 0 ? Math.max(step, round2(Math.round((w * 0.9) / step) * step)) : null
+    resetWeight: ex.assisted ? deloadWeight(ex, w) : w > 0 ? Math.max(step, round2(Math.round((w * 0.9) / step) * step)) : null
   };
 }
 
@@ -118,8 +118,9 @@ export function shouldSuggestDeload(data: UserData, prefs: Pick<Prefs, 'deload_w
 
 export const thisWeekKey = (now = Date.now()) => weekKey(now);
 
-/** Peso propuesto en descarga: un 10 % menos, redondeado al paso del ejercicio. */
-export const deloadWeight = (ex: Pick<Exercise, 'weightStep'>, w: number) => {
+/** Peso propuesto en descarga: un 10 % menos, redondeado al paso del ejercicio. Asistidos: un 10 % más de ayuda (al menos un paso). */
+export const deloadWeight = (ex: Pick<Exercise, 'weightStep' | 'assisted'>, w: number) => {
   const step = ex.weightStep || 1;
+  if (ex.assisted) return round2(Math.max(w + step, Math.round((w * 1.1) / step) * step));
   return Math.max(0, round2(Math.round((w * 0.9) / step) * step));
 };

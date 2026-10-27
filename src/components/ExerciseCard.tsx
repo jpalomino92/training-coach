@@ -180,11 +180,11 @@ export function ExerciseCard(p: ExerciseCardProps) {
             <p className="hd"><Icon name="alert" /><b>Este ejercicio está estancado</b></p>
             <p className="sm">
               {st.sessions >= 3 && <>Llevas {st.weeks} {st.weeks === 1 ? 'semana' : 'semanas'} ({st.sessions} sesiones) sin superar {setText(ex, { ...st.best, rir: null })}. </>}
-              {st.ghostLosses >= 3 && <>Tu fantasma te ganó las últimas {st.ghostLosses} sesiones. </>}
+              {st.ghostLosses >= 3 && <>Rocky te ganó las últimas {st.ghostLosses} sesiones. </>}
               Prueba uno de estos planes durante 4 semanas:
             </p>
             <div className="stall-act">
-              {p.stall.onReset && st.resetWeight != null && <Button variant="secondary" block onClick={p.stall.onReset}>Bajar a {loadText(st.resetWeight, ex)} y volver a subir</Button>}
+              {p.stall.onReset && st.resetWeight != null && <Button variant="secondary" block onClick={p.stall.onReset}>{ex.assisted ? `Subir a ${loadText(st.resetWeight, ex)} y volver a bajar` : `Bajar a ${loadText(st.resetWeight, ex)} y volver a subir`}</Button>}
               {p.stall.onAlt && p.stall.alternative && <Button variant="secondary" block onClick={p.stall.onAlt}>Pasar a la alternativa: {p.stall.alternative}</Button>}
               <button type="button" className="btn btn-link" onClick={p.stall.onDismiss}>Ahora no</button>
             </div>
@@ -208,7 +208,7 @@ export function ExerciseCard(p: ExerciseCardProps) {
           <div className={`ghost-line ${mood}`}>
             <GhostArt mood={mood} size="xs" />
             <p>
-              <b>Tu fantasma</b> · {fmtDate(p.ghost.workout.completed_at || p.ghost.workout.started_at)}: {p.ghost.sets.map(s => setText(ex, { ...s, rir: null })).join(' / ')}
+              <b>Rocky</b> · {fmtDate(p.ghost.workout.completed_at || p.ghost.workout.started_at)}: {p.ghost.sets.map(s => setText(ex, { ...s, rir: null })).join(' / ')}
               <span className="ghost-quote">«{MOOD_TEXT[mood]}»</span>
             </p>
           </div>

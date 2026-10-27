@@ -52,6 +52,8 @@ export function blankProgram(coachName = ''): Program {
 /** Copia editable de una rutina (incluida o propia). La rutina original no cambia. */
 export function duplicateProgram(p: Program, coachName = ''): Program {
   const copy: Program = structuredClone(p);
+  // La hoja original es de la rutina copiada (sus archivos se borran con ella)
+  delete copy.source;
   return { ...copy, id: CUSTOM_PREFIX + uuid(), custom: true, coachName, name: `Copia de ${p.name}`, shortName: `Copia de ${p.shortName}` };
 }
 
@@ -92,6 +94,7 @@ export function validateProgram(p: Program): ProgramIssue[] {
       if (!(e.sets >= 1 && e.sets <= 10)) out.push({ path: `days.${i}.exercises.${j}.sets`, message: `${et}: entre 1 y 10 series.` });
       if (!(e.reps.min >= 1 && e.reps.max >= e.reps.min && e.reps.max <= maxReps(e))) out.push({ path: `days.${i}.exercises.${j}.reps`, message: `${et}: el rango de ${unitWord(e)} no es válido.` });
       if (!(e.rest >= 15 && e.rest <= 600)) out.push({ path: `days.${i}.exercises.${j}.rest`, message: `${et}: el descanso debe estar entre 15 s y 10 min.` });
+      if (e.startWeight != null && !(e.startWeight > 0 && e.startWeight <= 500)) out.push({ path: `days.${i}.exercises.${j}.startWeight`, message: `${et}: el peso inicial tiene que estar entre 0 y 500.` });
       if (!(e.weightStep > 0 && e.weightStep <= 10)) out.push({ path: `days.${i}.exercises.${j}.weightStep`, message: `${et}: el paso de peso no es válido.` });
       // Sin RIR (vacío) es válido: cardio, movilidad y estiramientos
       if (!/^(\d(-\d)?)?$/.test(e.rir)) out.push({ path: `days.${i}.exercises.${j}.rir`, message: `${et}: el RIR tiene que ser un número o un rango (por ejemplo 2 o 2-3), o quedar vacío.` });
@@ -185,6 +188,7 @@ export function exerciseFromDb(e: ExerciseDbItem): Exercise {
     warn: '',
     compound: barbellLike,
     weightStep: eq === 'dumbbell' || eq === 'kettlebell' ? 1 : DEFAULT_WEIGHT_STEP,
+    assisted: eq === 'assisted' || undefined,
     exercisedbId: e.exerciseId,
     gifUrl: e.gifUrl,
     instructions: e.instructions.map(s => s.replace(/^Step:\d+\s*/, ''))

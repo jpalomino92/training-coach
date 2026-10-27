@@ -75,9 +75,10 @@ function Screens() {
 }
 
 function TimedScreens() {
-  const { prefs } = useApp();
+  const { prefs, restPush } = useApp();
+  // Aviso push del descanso (si este dispositivo lo activó en Perfil)
   return (
-    <TimerProvider sound={prefs.sound}>
+    <TimerProvider sound={prefs.sound} onAlarm={restPush ? (at, title, body) => restPush.schedule(at, title, body) : undefined}>
       <Screens />
       <Toast />
     </TimerProvider>

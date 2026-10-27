@@ -6,6 +6,7 @@ import type { GhostResult } from '../domain/ghost';
 import type { Exercise, WorkoutSet } from '../domain/types';
 import { Button } from './Button';
 import { FieldError, NumberField } from './Fields';
+import { RockyFace } from './GhostArt';
 import { Icon } from './Icon';
 import { WeightStepper } from './WeightStepper';
 
@@ -15,7 +16,7 @@ export function SetPending({ index, wait }: { index: number; wait?: string }) {
 }
 
 export function SetDone({ set, ex, fresh, record, versus, onEdit }: { set: WorkoutSet; ex: Exercise; fresh?: boolean; record?: string; versus?: { result: GhostResult; text: string }; onEdit(): void }) {
-  const vs = versus && <span className={`ghost-vs ${versus.result}`}><Icon name="ghost" />{versus.text}</span>;
+  const vs = versus && <span className={`ghost-vs ${versus.result}`}><RockyFace />{versus.text}</span>;
   return (
     <div className={`set-done${fresh ? ' fresh' : ''}${fresh && record ? ' pr' : ''}`}>
       <span className="ck" aria-hidden="true"><Icon name={fresh && record ? 'trophy' : 'check'} /></span>
@@ -115,9 +116,9 @@ export function SetEditor({ ex, index, mode, initial, reference, onSubmit, onCan
           : reference && <span className="muted">{reference}</span>}
       </div>
       {note && <p className="set-note">{note}</p>}
-      {ghostRef && mode === 'new' && <p className="ghost-ref"><Icon name="ghost" />{ghostRef}. Supéralo.</p>}
+      {ghostRef && mode === 'new' && <p className="ghost-ref"><RockyFace />{ghostRef}. Supéralo.</p>}
       {!ex.noWeight && (
-        <div className="w"><WeightStepper ref={weightRef} value={d.weight} step={ex.weightStep} unit={loadUnit(ex)} onChange={v => setD({ ...d, weight: v })} error={!!errors.weight} errorId={errId} />
+        <div className="w"><WeightStepper ref={weightRef} value={d.weight} step={ex.weightStep} unit={loadUnit(ex)} label={ex.assisted ? `Asistencia ${loadUnit(ex)}` : undefined} onChange={v => setD({ ...d, weight: v })} error={!!errors.weight} errorId={errId} />
           {barKg != null && <p className="plates" aria-live="polite">{platesText(parseNum(d.weight), barKg)}</p>}</div>
       )}
       <div className="two">

@@ -64,3 +64,24 @@
 .sum-pr svg{width:20px;height:20px;flex-shrink:0;color:var(--day-text)}
 .sum-pain svg{width:20px;height:20px;flex-shrink:0;color:var(--danger)}
 .workout-note textarea{min-height:72px}
+
+/* Rocky da ánimo (Hoy y resumen final) */
+.cheer{display:flex;gap:10px;align-items:center;margin-top:10px}
+.cheer-img{width:64px;height:64px;object-fit:contain;flex-shrink:0;user-select:none;transform-origin:50% 100%;animation:cheer-hop .7s ease-out 1}
+.cheer-img.sad{opacity:.6;animation:none}
+.cheer-img.party{animation:cheer-hop .7s ease-out 3}
+.cheer-say{margin:0;padding:8px 12px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line);font-size:15px;font-weight:600;line-height:1.35;color:var(--ink)}
+.cheer.big{flex-direction:column;margin:4px 0 0}
+.cheer.big .cheer-img{width:120px;height:120px}
+.cheer.big .cheer-say{text-align:center}
+.cel-week{margin:0;font-weight:600;color:var(--ink);text-align:center}
+@keyframes cheer-hop{0%{transform:translateY(0) scale(1,1)}30%{transform:translateY(-14px) scale(.96,1.04)}60%{transform:translateY(0) scale(1.04,.96)}100%{transform:translateY(0) scale(1,1)}}
+@media (prefers-reduced-motion:reduce){.cheer-img{animation:none!important}}
+
+/* Qué llevar hoy */
+.gear{margin:12px 16px 0;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.gear .h3{margin:0}
+.gear-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:15px;line-height:1.4}
+.gear-list li{display:flex;gap:8px;align-items:flex-start}
+.gear-list svg{flex-shrink:0;width:18px;height:18px;margin-top:2px;color:var(--ok)}
+.gear .btn-link{align-self:flex-start}

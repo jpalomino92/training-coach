@@ -151,6 +151,7 @@
 .ghost-line.scared,.ghost-line.beaten{border-color:var(--ok)}
 .ghost-line b{color:var(--ink)}
 .ghost-line svg,.ghost-ref svg,.ghost-vs svg,.cel-ghost svg{flex-shrink:0;width:18px;height:18px}
+.rocky-face{flex-shrink:0;width:22px;height:22px;object-fit:contain;user-select:none}
 .ghost-ref{margin:0;display:flex;gap:6px;align-items:center;font-size:15px;color:var(--muted)}
 .ghost-vs{display:flex;gap:6px;align-items:center;margin-top:4px;font-size:14px;font-weight:600;color:var(--muted)}
 .ghost-vs.win{color:var(--ok)}
@@ -158,11 +159,11 @@
 
 .ghost-quote{display:block;margin:2px 0 0;font-style:italic;color:var(--ink)}
 .ghost-art{display:inline-flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0}
-.ghost-art svg{display:block;width:100%;height:auto}
-.ghost-art.xs{width:48px}
-.ghost-art.md{width:120px}
-.ghost-art.lg{width:132px}
-.ghost-body{transition:transform .4s ease,opacity .4s ease}
+.ghost-stage{display:flex;align-items:flex-end;justify-content:center;width:100%;aspect-ratio:1}
+.ghost-body{display:block;max-width:100%;max-height:100%;object-fit:contain;transform-origin:50% 100%;user-select:none;transition:transform .4s ease,opacity .4s ease}
+.ghost-art.xs{width:56px}
+.ghost-art.md{width:128px}
+.ghost-art.lg{width:150px}
 .ghost-body.scared{animation:ghost-shake .5s ease-in-out 2}
 .ghost-body.smug{animation:ghost-float 2.4s ease-in-out infinite}
 @keyframes ghost-float{50%{translate:0 -4px}}

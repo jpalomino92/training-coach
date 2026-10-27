@@ -81,11 +81,15 @@ export const rirFirst = (ex: Exercise) => String(ex.rir).split('-')[0];
 
 export const kg = (v: number) => `${fmtNum(v)} kg`;
 
-type LoadOf = Pick<Exercise, 'load'> | null | undefined;
+type LoadOf = Pick<Exercise, 'load' | 'assisted'> | null | undefined;
 /** Unidad de la carga del ejercicio: kg o bloques de la máquina. */
 export const loadUnit = (ex: LoadOf) => (ex?.load === 'bloques' ? 'bloques' : 'kg');
-/** "40 kg", "4 bloques", "1 bloque". */
-export const loadText = (v: number, ex: LoadOf) => (ex?.load === 'bloques' ? `${fmtNum(v)} ${v === 1 ? 'bloque' : 'bloques'}` : kg(v));
+/** "40 kg", "4 bloques", "1 bloque"; en los asistidos, "10 bloques de asistencia". */
+export const loadText = (v: number, ex: LoadOf) =>
+  `${ex?.load === 'bloques' ? `${fmtNum(v)} ${v === 1 ? 'bloque' : 'bloques'}` : kg(v)}${ex?.assisted ? ' de asistencia' : ''}`;
+
+/** En los asistidos el peso es la ayuda: la mejor carga es la menor. */
+export const bestLoad = (ex: LoadOf, weights: number[]) => (weights.length ? (ex?.assisted ? Math.min(...weights) : Math.max(...weights)) : 0);
 
 /** "40 kg" o "40–42,5 kg" si el peso cambió entre series. */
 export function weightRange(weights: number[], ex?: LoadOf): string {
@@ -96,7 +100,7 @@ export function weightRange(weights: number[], ex?: LoadOf): string {
 }
 
 /** "40 kg × 12, RIR 2" */
-export function setText(ex: Pick<Exercise, 'unit' | 'load'>, s: { weight: number | null; reps: number; rir: number | null }): string {
+export function setText(ex: Pick<Exercise, 'unit' | 'load' | 'assisted'>, s: { weight: number | null; reps: number; rir: number | null }): string {
   const w = s.weight ? `${loadText(s.weight, ex)} × ` : '';
   const unit = unitSuffix(ex);
   const rir = s.rir != null ? `, RIR ${fmtNum(s.rir)}` : '';

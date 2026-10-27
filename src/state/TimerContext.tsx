@@ -1,6 +1,7 @@
 /* Temporizador de descanso. Se calcula con la hora de fin (Date.now) para que
    siga siendo correcto aunque se bloquee la pantalla. Al terminar vibra 200 ms
-   y se cierra solo a los 5 s. */
+   y se cierra solo a los 5 s. `onAlarm` programa el aviso push para cuando la
+   app no está a la vista (y lo cancela si lo está al terminar). */
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { playRestEnd, primeAudio } from '../services/sound';
 
@@ -34,12 +35,37 @@ export function useTimer(): TimerApi {
 
 export const vibrate = (ms: number) => { try { navigator.vibrate?.(ms); } catch { /* sin vibración */ } };
 
-export function TimerProvider({ children, sound = true }: { children: ReactNode; sound?: boolean }) {
+/** Antes del final, si la app está a la vista, se cancela el aviso push: ya avisa la app. */
+const PUSH_CANCEL_MS = 3000;
+
+export type RestAlarm = (endAt: number | null, title?: string, body?: string) => void;
+
+export function TimerProvider({ children, sound = true, onAlarm }: { children: ReactNode; sound?: boolean; onAlarm?: RestAlarm }) {
   const [timer, setTimer] = useState<TimerState | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const rang = useRef(false);
   const soundRef = useRef(sound);
   soundRef.current = sound;
+  const alarmRef = useRef(onAlarm);
+  alarmRef.current = onAlarm;
+  const timerRef = useRef(timer);
+  timerRef.current = timer;
+  const scheduled = useRef(false);
+
+  // Aviso push: se programa con cada cambio del descanso y se cancela al pararlo
+  const endAt = timer?.endAt ?? null;
+  useEffect(() => {
+    if (endAt == null) {
+      if (scheduled.current) { scheduled.current = false; alarmRef.current?.(null); }
+      return;
+    }
+    scheduled.current = true;
+    alarmRef.current?.(endAt, '¡Se acabó el descanso!', timerRef.current?.nextLabel || 'Toca la siguiente serie.');
+    const id = setTimeout(() => {
+      if (document.visibilityState === 'visible') alarmRef.current?.(null);
+    }, Math.max(0, endAt - PUSH_CANCEL_MS - Date.now()));
+    return () => clearTimeout(id);
+  }, [endAt]);
 
   // El audio solo se puede activar tras un toque: se desbloquea con el primero
   useEffect(() => {

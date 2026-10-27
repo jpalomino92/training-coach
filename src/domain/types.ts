@@ -33,6 +33,10 @@ export interface Exercise {
   group?: string;
   /** Vídeo propio del ejercicio (p. ej. el del especialista). */
   videoUrl?: string;
+  /** Peso de la primera vez (p. ej. el anotado en la hoja importada). Con historial manda el historial. */
+  startWeight?: number;
+  /** Asistido (dominadas o fondos asistidos): el peso es la ayuda, así que menos es mejor. */
+  assisted?: boolean;
   /** Sistema de 2 series: la serie 1 es pesada al fallo y la 2 baja el peso y usa esta técnica. */
   setTechnique?: SetTechnique;
   /** Bloque de cardio final: se registran tramos de máquinas (ver domain/cardio.ts). */
@@ -89,6 +93,26 @@ export interface Program {
   coachName?: string;
   /** Rutina propia de la persona (user_programs): creada, copiada o importada por ella. */
   own?: boolean;
+  /** De dónde se importó o generó: para "Ver hoja original". */
+  source?: ProgramSource;
+}
+
+/**
+ * Original de una rutina importada: la planilla (filas), el texto pegado,
+ * las fotos o el PDF (rutas en el almacenamiento de Supabase) o las respuestas
+ * con las que la IA la creó.
+ */
+export interface ProgramSource {
+  kind: 'sheet' | 'photos' | 'pdf' | 'text' | 'generated';
+  /** Nombre del archivo o descripción breve. */
+  name: string;
+  at: string;
+  /** Planilla: cada hoja con sus filas (recortadas). */
+  sheets?: { name: string; rows: string[][] }[];
+  /** Texto pegado o resumen de las respuestas. */
+  text?: string;
+  /** Fotos o PDF guardados en el almacenamiento (rutas). */
+  files?: string[];
 }
 
 /** Busca una rutina (incluida o propia) por su id. */
@@ -113,6 +137,8 @@ export interface Prefs {
   ghost: boolean;
   /** Mostrar las series de calentamiento en los básicos. */
   warmup: boolean;
+  /** Mostrar en Hoy qué llevar al gimnasio (agua, toalla, guantes…). */
+  gear: boolean;
   /** Plan elegido para un ejercicio estancado: { clave: plan }. */
   stall_plans?: Record<string, StallPlan>;
   /** Semanas de descarga (lunes, YYYY-MM-DD). No cuentan para el fantasma ni el estancamiento. */

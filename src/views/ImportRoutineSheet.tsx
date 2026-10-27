@@ -82,9 +82,16 @@ export function ImportRoutineSheet({ onClose, onReview }: { onClose(): void; onR
     try {
       const images = await Promise.all(photos.map(compressImage));
       const pdfData = pdf ? (await readAsDataUrl(pdf)).replace(/^data:[^;]*;/, 'data:application/pdf;') : null;
-      const out = await aiImporter.read({ images, ...(pdfData ? { pdf: { name: pdf!.name, data: pdfData } } : {}), ...(text.trim() ? { text: text.trim() } : {}) });
+      const typed = text.trim();
+      const out = await aiImporter.read({ images, ...(pdfData ? { pdf: { name: pdf!.name, data: pdfData } } : {}), ...(typed ? { text: typed } : {}) });
       setRemaining(out.remaining);
-      setResult(importAiRoutine(out.routine));
+      // El original queda guardado con la rutina ("Ver hoja original"): las fotos y el PDF se suben al guardarla
+      const extra = typed ? { text: typed } : {};
+      const source = pdfData ? { kind: 'pdf' as const, name: pdf!.name, ...extra }
+        : images.length ? { kind: 'photos' as const, name: images.length === 1 ? '1 foto' : `${images.length} fotos`, ...extra }
+        : { kind: 'text' as const, name: '', ...extra };
+      const uploads = pdfData ? [{ name: pdf!.name, dataUrl: pdfData }] : images.map((d, i) => ({ name: `foto-${i + 1}.jpg`, dataUrl: d }));
+      setResult({ ...importAiRoutine(out.routine, source), uploads });
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : 'No se pudo leer la rutina.');
       aiImporter.remaining().then(setRemaining);

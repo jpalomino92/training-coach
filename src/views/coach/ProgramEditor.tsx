@@ -12,11 +12,12 @@ import { TextField } from '../../components/Fields';
 import { Icon } from '../../components/Icon';
 import { SwitchRow } from '../../components/Switch';
 import { DAY_COLORS, blankDay, normalizeProgram, uniqueKey, validateProgram, type ProgramIssue } from '../../domain/customProgram';
-import { targetText } from '../../domain/format';
+import { loadText, targetText } from '../../domain/format';
 import type { DayColor, Exercise, Program } from '../../domain/types';
 import { useApp } from '../../state/AppContext';
 import { ExerciseEditor, TextArea } from './ExerciseEditor';
 import { ExercisePicker } from './ExercisePicker';
+import { SourceSheet } from '../SourceSheet';
 
 const COLOR_NAMES: Record<DayColor, string> = { red: 'Rojo', blue: 'Azul', yellow: 'Amarillo', green: 'Verde', black: 'Negro' };
 const WEEK_LETTERS: [string, string][] = [['L', 'Lunes'], ['M', 'Martes'], ['X', 'Miércoles'], ['J', 'Jueves'], ['V', 'Viernes'], ['S', 'Sábado'], ['D', 'Domingo']];
@@ -44,9 +45,11 @@ interface Props {
   notes?: string[];
   /** Claves de ejercicios que conviene revisar (se marcan hasta editarlos). */
   review?: string[];
+  /** Fotos o PDF de una importación aún sin guardar (data URL), para "Ver hoja original". */
+  previews?: string[];
 }
 
-export function ProgramEditor({ initial, isNew, onClose, onSave, onSaved, backLabel = 'Rutinas', notes, review }: Props) {
+export function ProgramEditor({ initial, isNew, onClose, onSave, onSaved, backLabel = 'Rutinas', notes, review, previews }: Props) {
   const { showToast } = useApp();
   const [p, setP] = useState<Program>(initial);
   const [issues, setIssues] = useState<ProgramIssue[]>([]);
@@ -56,6 +59,7 @@ export function ProgramEditor({ initial, isNew, onClose, onSave, onSaved, backLa
   const [editEx, setEditEx] = useState<{ day: number; index: number; ex: Exercise } | null>(null);
   const [confirmDay, setConfirmDay] = useState<number | null>(null);
   const [toReview, setToReview] = useState(() => new Set(review));
+  const [showSource, setShowSource] = useState(false);
   const issuesRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   // Una rutina importada sin guardar siempre tiene cambios
@@ -107,6 +111,8 @@ export function ProgramEditor({ initial, isNew, onClose, onSave, onSaved, backLa
         <span className="eyebrow">{isNew ? 'Nueva rutina' : 'Editar rutina'}</span>
         <h1 className="h1" tabIndex={-1} ref={titleRef}>{p.shortName || p.name || 'Rutina sin nombre'}</h1>
       </div>
+      {p.source && <Button variant="secondary" block icon="search" onClick={() => setShowSource(true)}>{p.source.kind === 'generated' ? 'Ver lo que le pediste a la IA' : 'Ver hoja original'}</Button>}
+      {showSource && p.source && <SourceSheet source={p.source} previews={previews} onClose={() => setShowSource(false)} />}
 
       {notes && notes.length > 0 && (
         <div className="note">
@@ -215,7 +221,7 @@ export function ProgramEditor({ initial, isNew, onClose, onSave, onSaved, backLa
               {d.exercises.map((e, j) => (
                 <li key={e.key} className={hasIssue(`days.${i}.exercises.${j}`) ? 'has-issue' : toReview.has(e.key) ? 'to-review' : ''}>
                   <ExerciseIllustration pose={e.pose} size="xs" imageSrc={e.gifUrl} />
-                  <span className="tx"><b>{e.name}</b>{toReview.has(e.key) && <span className="review-tag">Revisar</span>}<span className="sm muted">{targetText(e)}{e.rir && ` · RIR ${e.rir}`}{e.group && ' · en biserie'}</span></span>
+                  <span className="tx"><b>{e.name}</b>{toReview.has(e.key) && <span className="review-tag">Revisar</span>}<span className="sm muted">{targetText(e)}{e.rir && ` · RIR ${e.rir}`}{e.startWeight && !e.noWeight ? ` · empieza con ${loadText(e.startWeight, e)}` : ''}{e.group && ' · en biserie'}</span></span>
                   <span className="acts">
                     <button type="button" className="icon-btn" onClick={() => up(q => { q.days[i].exercises = move(q.days[i].exercises, j, -1); })} aria-label={`Subir ${e.name}`} aria-disabled={j === 0 || undefined}><Icon name="up" /></button>
                     <button type="button" className="icon-btn" onClick={() => up(q => { q.days[i].exercises = move(q.days[i].exercises, j, 1); })} aria-label={`Bajar ${e.name}`} aria-disabled={j === d.exercises.length - 1 || undefined}><Icon name="down" /></button>

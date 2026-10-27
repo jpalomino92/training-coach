@@ -35,7 +35,8 @@ export function workoutSummary(data: UserData, w: Workout, lookup: ProgramLookup
   const volumeOf = (list: typeof sets) => list.reduce((n, s) => {
     const ex = resolveExercise(program, s.exercise_key);
     // El volumen se cuenta en kg (sin ejercicios por tiempo); los bloques, con su peso estimado
-    if (ex && isTimed(ex)) return n;
+    // Sin tiempo ni asistidos (su peso es ayuda, no carga)
+    if (ex && (isTimed(ex) || ex.assisted)) return n;
     if (ex?.load === 'bloques') {
       if (s.weight) approx = true;
       return n + (s.weight || 0) * KG_PER_BLOCK * s.reps;

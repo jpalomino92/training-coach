@@ -14,8 +14,12 @@ import { HealthNoticeCompact, HealthNoticeFull } from '../components/HealthNotic
 import { WorkoutNote, WorkoutSummaryCard } from '../components/WorkoutSummary';
 import { WorkoutDoneSheet } from '../components/WorkoutDoneSheet';
 import { CardioCard } from '../components/CardioCard';
+import { RockyCheer } from '../components/RockyCheer';
+import { dailyCheer } from '../domain/cheer';
+import { gearFor } from '../domain/gear';
+import { warmedUpBefore } from '../domain/warmup';
 import { CARDIO_MACHINES, cardioMachine, cardioSegments, countedSets, isCardioMachineKey } from '../domain/cardio';
-import { dayTitle, fmtDate, fmtToday, loadText, restText } from '../domain/format';
+import { bestLoad, dayTitle, fmtDate, fmtToday, loadText, restText } from '../domain/format';
 import { restFor } from '../domain/prefs';
 import type { Exercise, Feel, Program, SupersetPrefs } from '../domain/types';
 import { streak, weeklyCounts, weeklyGoal } from '../domain/consistency';
@@ -264,16 +268,19 @@ export function TodayView() {
   /** Estancamiento, plan de reinicio y semana de descarga de un ejercicio. */
   const planProps = (base: Exercise, ex: Exercise, last: ReturnType<typeof lastSessionFor>) => {
     const plan = activePlan(prefs, ex.key);
-    const lastTop = last ? Math.max(0, ...last.sets.map(s => s.weight || 0)) : 0;
+    const lastTop = last ? bestLoad(ex, last.sets.map(s => s.weight || 0)) : 0;
     const resetPending = plan?.plan === 'reset' && plan.weight != null && (!last || +new Date(last.workout.started_at) < +new Date(plan.at));
     let suggestion: Suggestion | undefined;
     let startWeight: number | undefined;
-    if (deloadNow && lastTop > 0 && !ex.noWeight) {
+    if (deloadNow && (lastTop > 0 || (ex.assisted && last)) && !ex.noWeight) {
       startWeight = deloadWeight(ex, lastTop);
-      suggestion = { level: 'down', action: `Semana de descarga: usa unos ${loadText(startWeight, ex)}.`, reason: 'Un 10 % menos que la última vez y deja 3–4 repeticiones en reserva. Esta semana no cuenta para el fantasma.' };
+      suggestion = { level: 'down', action: `Semana de descarga: usa unos ${loadText(startWeight, ex)}.`, reason: `${ex.assisted ? 'Un poco más de ayuda' : 'Un 10 % menos'} que la última vez y deja 3–4 repeticiones en reserva. Esta semana no cuenta para Rocky.` };
     } else if (resetPending) {
       startWeight = plan!.weight;
-      suggestion = { level: 'down', action: `Reinicio: empieza con ${loadText(plan!.weight!, ex)}.`, reason: 'Es un 10 % menos que tu mejor marca. Sube de a poco con la progresión de siempre: en unas semanas deberías superarla.' };
+      suggestion = { level: 'down', action: `Reinicio: empieza con ${loadText(plan!.weight!, ex)}.`, reason: `${ex.assisted ? 'Es un poco más de ayuda' : 'Es un 10 % menos'} que tu mejor marca. Avanza de a poco con la progresión de siempre: en unas semanas deberías superarla.` };
+    } else if (!last && ex.startWeight && !ex.noWeight) {
+      // Primera vez: el peso anotado en la rutina ya viene puesto en la serie 1
+      startWeight = ex.startWeight;
     }
     const st = deloadNow || ex.key !== base.key ? null : stallFor(data, ex, prefs);
     const stall = st ? {
@@ -303,7 +310,7 @@ export function TodayView() {
         note={data.notes[ex.key]?.note || ''} next={group ? null : nextAfterActive}
         ghost={prefs.ghost && !deloadNow ? ghostFor(data, ex.key, workout?.id, Date.now(), skipDeload) : null}
         {...planProps(base, ex, last)}
-        warmup={prefs.warmup}
+        warmup={prefs.warmup && !warmedUpBefore(day.exercises, base)}
         waitFor={group ? waitText(base, group.turn) : undefined}
         restLabel={group ? (isLast ? `Descanso ${restText(groupRest)} al terminar la vuelta` : 'Sin descanso') : undefined}
         superset={group ? undefined : supersetAction(unitOf(base.key)!)}
@@ -381,6 +388,7 @@ export function TodayView() {
           <b>Esta semana: {thisWeek} de {goal}</b> {goal === 1 ? 'entrenamiento' : 'entrenamientos'}
           {weeks > 0 && <> · racha de {weeks} {weeks === 1 ? 'semana' : 'semanas'}</>}
         </p>
+        {status !== 'prog' && <RockyCheer {...dailyCheer(data.workouts, goal, day.name)} />}
       </header>
 
       <HealthNoticeCompact safety={program.safety} />
@@ -398,7 +406,7 @@ export function TodayView() {
       {deloadNow && (
         <section className="card deload on" aria-labelledby="deload-t">
           <h2 className="h3" id="deload-t">Semana de descarga</h2>
-          <p className="sm">Usa un 10 % menos de peso y deja 3–4 repeticiones en reserva. Esta semana no cuenta para el fantasma ni para el estancamiento.</p>
+          <p className="sm">Usa un 10 % menos de peso y deja 3–4 repeticiones en reserva. Esta semana no cuenta para Rocky ni para el estancamiento.</p>
           <button type="button" className="btn btn-link" onClick={() => savePrefs({ deload_weeks: (prefs.deload_weeks || []).filter(w => w !== thisWeekKey()) }, 'Descarga cancelada.')}>Cancelar la descarga</button>
         </section>
       )}
@@ -424,6 +432,16 @@ export function TodayView() {
           <p className="day-info">{day.exercises.length} ejercicios · {total} series. La primera serie que registres inicia el entrenamiento.</p>
         )}
       </div>
+
+      {status === 'none' && prefs.gear && (
+        <section className="card gear" aria-labelledby="gear-t">
+          <h2 className="h3" id="gear-t">Para hoy, lleva</h2>
+          <ul className="gear-list">
+            {gearFor(day).map(g => <li key={g.id}><Icon name="check" /><span><b>{g.name}</b> <span className="muted">· {g.why}</span></span></li>)}
+          </ul>
+          <button type="button" className="btn btn-link" onClick={() => savePrefs({ gear: false }, 'Ya no te lo recordaremos. Puedes volver a activarlo en Perfil.')}>No mostrar más</button>
+        </section>
+      )}
 
       <div className="list">
         {doneList.length > 0 && (

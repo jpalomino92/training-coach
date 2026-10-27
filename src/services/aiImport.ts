@@ -1,8 +1,10 @@
 /* ==========================================================
    Importar una rutina con IA (solo modo Supabase): las fotos, el PDF
    o el texto van a la Edge Function "import-routine", que los lee con
-   OpenAI y devuelve filas de planilla. La clave de OpenAI nunca está
-   en la app. Límite de AI_IMPORT_LIMIT lecturas por persona y mes.
+   OpenAI y devuelve filas de planilla. También crea una rutina a medida
+   con las respuestas de la persona (misma función, mismas filas).
+   La clave de OpenAI nunca está en la app. Límite de AI_IMPORT_LIMIT
+   usos de IA (leer o crear) por persona y mes.
    ========================================================== */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AiRoutine } from '../domain/routineImport';
@@ -16,10 +18,27 @@ export interface AiImportInput {
   text?: string;
 }
 
+/** Respuestas para crear una rutina a medida (ver domain/routineGenerate.ts). */
+export interface AiGenerateInput {
+  age: number | null;
+  sex: string;
+  goals: string[];
+  level: string;
+  days: number;
+  minutes: number;
+  place: string;
+  limitations: string;
+  preferences: string;
+  catalog: string[];
+  /** Nombres (en inglés) del catálogo de ExerciseDB que se pueden hacer en ese lugar. */
+  library: string[];
+}
+
 export interface AiImporter {
-  /** Lecturas que quedan este mes, o null si no se pudo saber (sin conexión). */
+  /** Usos que quedan este mes, o null si no se pudo saber (sin conexión). */
   remaining(): Promise<number | null>;
   read(input: AiImportInput): Promise<{ routine: AiRoutine; remaining: number }>;
+  generate(input: AiGenerateInput): Promise<{ routine: AiRoutine; remaining: number }>;
 }
 
 const monthStart = () => { const d = new Date(); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString(); };
@@ -36,18 +55,21 @@ export class SupabaseAiImporter implements AiImporter {
     } catch { return null; }
   }
 
-  async read(input: AiImportInput) {
-    const { data, error } = await this.c.functions.invoke('import-routine', { body: input });
+  read(input: AiImportInput) { return this.call(input, 'leer'); }
+  generate(input: AiGenerateInput) { return this.call({ generate: input }, 'crear'); }
+
+  private async call(body: object, verb: 'leer' | 'crear') {
+    const { data, error } = await this.c.functions.invoke('import-routine', { body });
     if (error) {
       const ctx = (error as { context?: Response }).context;
       if (ctx && typeof ctx.json === 'function') {
-        if (ctx.status === 404) throw new Error('La importación con IA todavía no está activada en el servidor.');
+        if (ctx.status === 404) throw new Error('La IA todavía no está activada en el servidor.');
         const body = await ctx.json().catch(() => null) as { error?: string } | null;
         if (body?.error) throw new Error(body.error);
       }
       throw new Error(error.name === 'FunctionsFetchError'
-        ? 'Leer con IA necesita conexión. Inténtalo de nuevo cuando tengas internet.'
-        : 'No se pudo leer la rutina. Inténtalo de nuevo.');
+        ? `${verb === 'leer' ? 'Leer' : 'Crear'} con IA necesita conexión. Inténtalo de nuevo cuando tengas internet.`
+        : `No se pudo ${verb} la rutina. Inténtalo de nuevo.`);
     }
     return data as { routine: AiRoutine; remaining: number };
   }

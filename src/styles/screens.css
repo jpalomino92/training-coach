@@ -155,3 +155,12 @@
 [data-theme="dark"] .cal-day.on{color:#0F1522}
 .cal-day i{position:absolute;right:-2px;top:-2px;min-width:16px;height:16px;border-radius:8px;background:var(--ink);color:var(--surface);font:700 11px/16px var(--font-body);font-style:normal}
 .cal-grid td.today .cal-day{outline:2px solid var(--ink);outline-offset:1px}
+
+/* Hoja original de una rutina importada */
+.src-table{overflow:auto;max-height:60vh;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface)}
+.src-table:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.src-table table{border-collapse:collapse;font-size:14px;line-height:1.35}
+.src-table td{padding:6px 8px;border:1px solid var(--line);vertical-align:top;min-width:64px;max-width:260px}
+.src-text{margin:0;padding:12px 14px;border-radius:var(--r-md);background:var(--surface-2);font:15px/1.5 var(--font-body);white-space:pre-wrap;overflow-wrap:anywhere}
+.src-img{display:block;border-radius:var(--r-md);overflow:hidden;border:1px solid var(--line)}
+.src-img img{display:block;width:100%;height:auto}

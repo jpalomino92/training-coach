@@ -34,8 +34,12 @@ export default defineConfig(({ mode }) => {
               ]
             },
             workbox: {
-              globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+              globPatterns: ['**/*.{js,css,html,svg,png,webp,woff2}'],
+              // El catálogo de ExerciseDB (~900 KB) solo se usa al crear una rutina con IA, que ya necesita conexión
+              globIgnores: ['**/exercise-catalog-*.js'],
               navigateFallback: '/index.html',
+              // Notificaciones push del fin de descanso (public/push-sw.js)
+              importScripts: ['push-sw.js'],
               cleanupOutdatedCaches: true,
               // Nunca se cachean respuestas de Supabase (auth ni datos): siempre van a la red.
               runtimeCaching: [
@@ -55,6 +59,8 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       globals: true,
       setupFiles: ['tests/unit/setup.ts'],
+      // Las pruebas de pantallas completas tardan 2–4 s solas y más con todas en paralelo
+      testTimeout: 15_000,
       include: ['tests/unit/**/*.test.{ts,tsx}'],
       css: false
     }

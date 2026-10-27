@@ -35,8 +35,8 @@ describe('fantasma', () => {
 
   it('compara series: mismo peso por repeticiones, distinto peso por 1RM estimado', () => {
     const e = ex();
-    expect(setVersus(e, { weight: 60, reps: 10 }, { weight: 60, reps: 8 })).toEqual({ result: 'win', text: 'Le ganas al fantasma por 2 repeticiones' });
-    expect(setVersus(e, { weight: 60, reps: 7 }, { weight: 60, reps: 8 })).toEqual({ result: 'lose', text: 'El fantasma iba 1 repetición por delante (60 kg × 8)' });
+    expect(setVersus(e, { weight: 60, reps: 10 }, { weight: 60, reps: 8 })).toEqual({ result: 'win', text: 'Le ganas a Rocky por 2 repeticiones' });
+    expect(setVersus(e, { weight: 60, reps: 7 }, { weight: 60, reps: 8 })).toEqual({ result: 'lose', text: 'Rocky iba 1 repetición por delante (60 kg × 8)' });
     expect(compareSet(e, { weight: 65, reps: 6 }, { weight: 60, reps: 8 })).toBe('win'); // 78 > 76
     expect(setVersus(e, { weight: 60, reps: 8 }, { weight: 60, reps: 8 }).result).toBe('tie');
     expect(compareSet(ex({ unit: 's' }), { weight: null, reps: 40 }, { weight: null, reps: 30 })).toBe('win');
@@ -45,7 +45,7 @@ describe('fantasma', () => {
   it('el ejercicio se decide por la mejor serie; el objetivo de cada serie', () => {
     expect(exerciseVersus(ex(), [{ weight: 60, reps: 8 }, { weight: 62.5, reps: 8 }], [{ weight: 62.5, reps: 7 }])).toBe('win');
     const g = { workout: w('a', '2026-09-20T10:00:00'), sets: [s('a', 'bench', 0, 60, 8)] };
-    expect(ghostTarget(ex(), g, 0)).toBe('Fantasma: 60 kg × 8');
+    expect(ghostTarget(ex(), g, 0)).toBe('Rocky: 60 kg × 8');
     expect(ghostTarget(ex(), g, 1)).toBeUndefined();
   });
 

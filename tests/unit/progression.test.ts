@@ -4,6 +4,15 @@ import { routinePrograms, findExercise, findExerciseAnywhere } from '../../src/d
 import { cautiousProg, ex, normalProg, sets } from './helpers';
 
 describe('doble progresión', () => {
+  it('primera vez con peso anotado en la rutina: lo propone', () => {
+    const s = suggest(ex({ startWeight: 4, load: 'bloques' }), [], normalProg);
+    expect(s).toMatchObject({ level: 'none', weight: 4 });
+    expect(s.reason).toContain('Empieza con 4 bloques');
+    expect(s.reason).toContain('dejando 2 en reserva');
+    // Con historial manda el historial
+    expect(suggest(ex({ startWeight: 4 }), sets(40, [12, 12, 12, 12], 2), normalProg).reason).not.toContain('Empieza con');
+  });
+
   it('primera vez: sin series previas da una indicación para elegir peso', () => {
     const s = suggest(ex(), [], normalProg);
     expect(s.level).toBe('none');

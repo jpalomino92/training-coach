@@ -23,3 +23,9 @@ export const config = {
     anonKey: (env.VITE_SUPABASE_ANON_KEY as string | undefined) || ''
   }
 };
+
+/**
+ * Clave pública VAPID de las notificaciones push del descanso (es pública: va en la app).
+ * La privada solo está en los secretos de la Edge Function "rest-push".
+ */
+export const VAPID_PUBLIC_KEY = 'BHXo4v2Uef2uh69Hfkx1YHSNVqGWANwUWDZNImkGDbUhs8fSHk6Mg_f4zADiefuD5Uk_YeCZJ9eKBSVKl_n9j7o';

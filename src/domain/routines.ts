@@ -46,26 +46,26 @@ export const PAIN_GUIDE = {
  * Pega el enlace de YouTube de cada uno: el ejercicio lo mostrará en "Ver vídeo del ejercicio".
  */
 const SPECIALIST_VIDEOS: Record<number, string> = {
-  1: '', // Cardio en cinta
-  2: '', // Activación cardiovascular
-  3: '', // Circuito zona lumbar
-  4: '', // Leg station
-  5: '', // Prensa horizontal
-  6: '', // Patada en polea lateral y trasera
-  7: '', // Abducción inclinada
-  8: '', // Remo en polea baja
-  9: '', // Press de banco inclinado
-  10: '', // Remo bilateral
-  11: '', // Press vertical
-  12: '', // Banco Scott unilateral
+  1: 'https://youtube.com/shorts/aP3TegcyDi4', // Cardio en cinta
+  2: 'https://youtube.com/shorts/UHjxIo5vQZU', // Activación cardiovascular
+  3: 'https://youtube.com/shorts/3maNxMgs4v4', // Circuito zona lumbar
+  4: 'https://youtube.com/shorts/63fFc_Cq9YA', // Leg station
+  5: 'https://youtube.com/shorts/UEXUr0oFchY', // Prensa horizontal
+  6: 'https://youtube.com/shorts/OyYimyp3f14', // Patada en polea lateral y trasera
+  7: 'https://youtube.com/shorts/x3vgbKG8RMY', // Abducción inclinada
+  8: 'https://youtube.com/shorts/p9BvAI1OkZM', // Remo en polea baja
+  9: 'https://youtube.com/shorts/-jO7TLGGLyc', // Press de banco inclinado
+  10: 'https://youtube.com/shorts/qjjj430aGB8', // Remo bilateral
+  11: 'https://youtube.com/shorts/nlHfigHj_Cs', // Press vertical
+  12: 'https://youtube.com/shorts/h64lEbeovaw', // Banco Scott unilateral
   13: '', // Push down
   14: '', // Aducción escapular
   15: '', // Zona lumbar en bosu
-  16: '', // Hiperextensión
-  17: '', // Movilidad de cadera y espalda baja
-  18: '', // Fascia móvil cadena posterior
-  19: '', // Flexibilidad cadena posterior
-  20: '', // Rotación abdominal
+  16: 'https://youtube.com/shorts/FQv5IXYwimQ', // Hiperextensión
+  17: 'https://youtube.com/shorts/hDo8mWm_9b0', // Movilidad de cadera y espalda baja
+  18: 'https://youtube.com/shorts/prql_rTZrc0', // Fascia móvil cadena posterior
+  19: 'https://youtube.com/shorts/XhJVgCl8vks', // Flexibilidad cadena posterior
+  20: 'https://youtube.com/shorts/GB7VWZ0qDfo', // Rotación abdominal
   21: '', // Flexibilidad
   22: '', // Leg curl
   23: '', // Glúteo con banda

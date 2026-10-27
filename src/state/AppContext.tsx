@@ -15,7 +15,10 @@ import type {
 import type { CoachInfo, CoachLink, CoachService } from '../services/coach';
 import { LocalOwnPrograms, type OwnPrograms } from '../services/ownPrograms';
 import type { AiImporter } from '../services/aiImport';
-import { activeWorkout, defaultDayId, isDayDone, setsOf } from '../domain/workout';
+import type { RestPush } from '../services/restPush';
+import type { SourceUpload } from '../domain/routineImport';
+import { activeWorkout, defaultDayId, isDayDone, setsOf, staleWorkouts } from '../domain/workout';
+import { fmtDate } from '../domain/format';
 import { createBackend, type Backend } from '../services/backend';
 import { emptyData, isSyncSource, type Store, type SyncState } from '../services/storage/types';
 import { dataReducer } from './dataReducer';
@@ -61,10 +64,14 @@ export interface AppApi {
   usingAssigned: boolean;
   /** Leer rutinas de fotos, PDF o texto con IA (null en modo demo). */
   aiImporter: AiImporter | null;
+  /** Aviso push al terminar el descanso (null en modo demo). */
+  restPush: RestPush | null;
   /** Rutinas propias de la persona (creadas, copiadas o importadas). */
   ownPrograms: Program[];
-  /** Guarda (crea o actualiza) una rutina propia. */
-  saveOwnProgram(p: Program): Promise<Program>;
+  /** Guarda (crea o actualiza) una rutina propia. `uploads`: fotos o PDF originales de una importación. */
+  saveOwnProgram(p: Program, uploads?: SourceUpload[]): Promise<Program>;
+  /** Enlaces temporales a las fotos o el PDF originales de una rutina propia. */
+  ownSourceUrls(paths: string[]): Promise<string[]>;
   /** Elimina una rutina propia (no puede ser la que se está usando). El historial se conserva. */
   deleteOwnProgram(id: string): Promise<void>;
   /** Cambia la rutina activa: una incluida, una propia o la asignada por el entrenador. `ack`: se aceptó su aviso de salud. */
@@ -126,6 +133,7 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
   const [assignedProgram, setAssignedProgram] = useState<Program | null>(null);
   const ownRef = useRef<OwnPrograms | null>(null);
   const aiRef = useRef<AiImporter | null>(null);
+  const pushRef = useRef<RestPush | null>(null);
   const [ownPrograms, setOwnPrograms] = useState<Program[]>([]);
   const unsubSync = useRef<(() => void) | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -172,6 +180,7 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
     coachRef.current = svc;
     ownRef.current = own;
     aiRef.current = b.createAiImporter ? b.createAiImporter(u) : null;
+    pushRef.current = b.createRestPush ? b.createRestPush(u) : null;
     setOwnPrograms(mine);
     if (isSyncSource(s)) {
       const off1 = s.onSync(setSync);
@@ -219,6 +228,33 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [status, loadCoach]);
 
+  // Entrenamientos que se quedaron abiertos (se olvidó terminarlos): se cierran solos tras 4 horas sin actividad
+  const dataRef = useRef(data);
+  dataRef.current = data;
+  useEffect(() => {
+    if (status !== 'ready') return;
+    let running = false;
+    const check = async () => {
+      const s = storeRef.current;
+      const stale = staleWorkouts(dataRef.current);
+      if (!s || running || !stale.length) return;
+      running = true;
+      try {
+        for (const { workout, completedAt } of stale) {
+          dispatch({ type: 'workout', workout: await s.updateWorkout(workout.id, { status: 'completed', completed_at: completedAt }) });
+        }
+        showToast(stale.length === 1
+          ? `Cerramos el entrenamiento del ${fmtDate(stale[0].completedAt)}: se quedó abierto.`
+          : `Cerramos ${stale.length} entrenamientos que se quedaron abiertos.`);
+      } catch (e) { console.error(e); } finally { running = false; }
+    };
+    void check();
+    const onVis = () => { if (document.visibilityState === 'visible') void check(); };
+    document.addEventListener('visibilitychange', onVis);
+    const id = setInterval(check, 10 * 60_000);
+    return () => { document.removeEventListener('visibilitychange', onVis); clearInterval(id); };
+  }, [status, user, showToast]);
+
   const profile = data.profile;
   const customs = useMemo<Record<string, Program>>(() => ({
     ...Object.fromEntries(ownPrograms.map(p => [p.id, p])),
@@ -246,13 +282,21 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
   const api: AppApi = {
     status, bootError, mode: backend?.auth.mode || 'demo', user, data, profile, program,
     tab, setTab, dayId, setDayId, editingProfile, setEditingProfile, toast, showToast, sync,
-    prefs: prefsOf(profile), lookup, coachApi: coachRef.current, coach, coachLink, assignedProgram, usingAssigned, ownPrograms, aiImporter: aiRef.current,
+    prefs: prefsOf(profile), lookup, coachApi: coachRef.current, coach, coachLink, assignedProgram, usingAssigned, ownPrograms, aiImporter: aiRef.current, restPush: pushRef.current,
 
-    async saveOwnProgram(p) {
+    async saveOwnProgram(p, uploads) {
       if (!ownRef.current) throw new Error('No hay sesión iniciada.');
+      if (uploads?.length && p.source) {
+        const files = await ownRef.current.uploadSource(p.id, uploads);
+        p = { ...p, source: { ...p.source, files } };
+      }
       const saved = await ownRef.current.save(p);
       setOwnPrograms(list => [saved, ...list.filter(x => x.id !== saved.id)]);
       return saved;
+    },
+    async ownSourceUrls(paths) {
+      if (!ownRef.current || !paths.length) return [];
+      return ownRef.current.sourceUrls(paths);
     },
     async deleteOwnProgram(id) {
       if (!ownRef.current) throw new Error('No hay sesión iniciada.');
@@ -312,6 +356,8 @@ export function AppProvider({ children, backend: injected }: { children: ReactNo
       coachRef.current = null;
       ownRef.current = null;
       aiRef.current = null;
+      pushRef.current?.schedule(null);
+      pushRef.current = null;
       setOwnPrograms([]);
       setCoach(null); setCoachLink(null); setAssignedProgram(null);
       if (pending) showToast(`Quedan ${pending} ${pending === 1 ? 'cambio' : 'cambios'} por enviar: se enviarán cuando vuelvas a entrar con conexión.`);

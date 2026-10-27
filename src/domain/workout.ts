@@ -22,6 +22,21 @@ export function activeWorkout(data: UserData, program: Program, dayId: string, n
     || null;
 }
 
+/** Horas sin actividad tras las que un entrenamiento abierto se da por terminado (se olvidó cerrarlo). */
+export const STALE_HOURS = 4;
+
+/**
+ * Entrenamientos en curso sin actividad (ni inicio ni series) en las últimas STALE_HOURS horas.
+ * Se cierran con la hora de su última serie, para que la duración no se infle.
+ */
+export function staleWorkouts(data: UserData, now = Date.now()): { workout: Workout; completedAt: string }[] {
+  return data.workouts.filter(w => w.status === 'in_progress').flatMap(w => {
+    const times = [+new Date(w.started_at), ...setsOf(data, w.id).map(s => +new Date(s.updated_at || s.created_at))].filter(Number.isFinite);
+    const last = Math.max(...times);
+    return now - last > STALE_HOURS * 3600_000 ? [{ workout: w, completedAt: new Date(last).toISOString() }] : [];
+  });
+}
+
 export interface LastSession { workout: Workout; sets: WorkoutSet[] }
 
 /**
@@ -144,18 +159,20 @@ export function exerciseProgress(data: UserData, program: Program, startDate: st
       for (const w of ws) {
         const ss = setsOf(data, w.id).filter(s => s.exercise_key === ex.key);
         if (!ss.length) continue;
-        const sum = summarize(ss)!;
+        const sum = summarize(ss, ex.assisted)!;
         sessions.push({ week: weekNumber(w.completed_at || w.started_at, startDate), top: sum.topWeight, best: Math.max(...sum.reps) });
       }
       if (!sessions.length) continue;
       const loaded = !isTimed(ex) && sessions.some(s => s.top > 0);
       const metric = (s: { top: number; best: number }) => (loaded ? s.top : s.best);
+      // Asistidos: lo mejor es la menor ayuda
+      const better = (a: number, b: number) => (loaded && ex.assisted ? Math.min(a, b) : Math.max(a, b));
       const weeks = new Map<number, number>();
-      sessions.forEach(s => weeks.set(s.week, Math.max(weeks.get(s.week) ?? 0, metric(s))));
+      sessions.forEach(s => weeks.set(s.week, weeks.has(s.week) ? better(weeks.get(s.week)!, metric(s)) : metric(s)));
       out.push({
         ex: findExercise(program, ex.key) || ex, day, loaded, isAlternative: ex.key === altKey(ex.key),
         last: metric(sessions[sessions.length - 1]),
-        max: Math.max(...sessions.map(metric)),
+        max: sessions.map(metric).reduce(better),
         weeks: [...weeks.entries()].sort((a, b) => a[0] - b[0])
       });
     }

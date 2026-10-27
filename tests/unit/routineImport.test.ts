@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { validateProgram } from '../../src/domain/customProgram';
 import { parseCsv } from '../../src/domain/csv';
-import { importAiRoutine, importRoutine, isToFailure, matchExercise, parseRest, parseRir, parseTarget, ROUTINE_TEMPLATE, type AiRoutine } from '../../src/domain/routineImport';
+import { importAiRoutine, importRoutine, isToFailure, matchExercise, parseLoad, parseRest, parseRir, parseTarget, ROUTINE_TEMPLATE, type AiRoutine } from '../../src/domain/routineImport';
 import { readXlsx } from '../../src/services/xlsx';
 
 const csv = (text: string, name = 'rutina.csv') => importRoutine([{ name, rows: parseCsv(text) }], name);
@@ -227,5 +227,56 @@ describe('importar rutina con IA', () => {
     expect(r.notes[0]).toBe('La última línea estaba tachada.');
     expect(r.notes[1]).toMatch(/no estaba segura de 1 ejercicio/);
     expect(validateProgram(p)).toEqual([]);
+  });
+});
+
+describe('importar rutina: peso inicial, vídeo y hoja original', () => {
+  it('lee el peso en kilos, bloques, libras o peso corporal', () => {
+    expect(parseLoad('')).toEqual({});
+    expect(parseLoad('20')).toEqual({ weight: 20, load: 'kg' });
+    expect(parseLoad('12,5 kg')).toEqual({ weight: 12.5, load: 'kg' });
+    expect(parseLoad('4 bloques')).toEqual({ weight: 4, load: 'bloques' });
+    expect(parseLoad('3 placas')).toEqual({ weight: 3, load: 'bloques' });
+    expect(parseLoad('25 lb')).toEqual({ weight: 11.5, load: 'kg' });
+    expect(parseLoad('20/22,5/25 kg')).toEqual({ weight: 20, load: 'kg' });
+    expect(parseLoad('mancuernas de 2.5Kg')).toEqual({ weight: 2.5, load: 'kg' });
+    expect(parseLoad('Peso corporal')).toEqual({ noWeight: true });
+    expect(parseLoad('ligero')).toBeNull();
+    expect(parseLoad('900')).toBeNull();
+  });
+
+  it('guarda el peso inicial, el vídeo (aunque su columna no tenga título) y una copia de la planilla', () => {
+    const r = csv([
+      'dia;ejercicio;series;reps;peso;;',
+      'Día 1;Prensa;3;12;5 bloques;;https://youtube.com/shorts/abc',
+      'Día 1;Press banca;3;8;40;;',
+      'Día 1;Plancha;3;30s;peso corporal;;',
+      'Día 1;Curl con mancuernas;3;10;un poco;;'
+    ].join('\n'), 'Rutina de mamá.csv');
+    const [press, bench, plank, curl] = r.program!.days[0].exercises;
+    expect(press).toMatchObject({ key: 'leg_press', startWeight: 5, load: 'bloques', weightStep: 1, videoUrl: 'https://youtube.com/shorts/abc' });
+    expect(bench).toMatchObject({ key: 'bench_press', startWeight: 40 });
+    expect(bench.load).toBeUndefined();
+    expect(plank).toMatchObject({ noWeight: true });
+    expect(plank.startWeight).toBeUndefined();
+    expect(curl.startWeight).toBeUndefined();
+    expect(r.review).toContain(curl.key);
+    expect(r.notes.join(' ')).toMatch(/2 ejercicios tienen peso inicial/);
+    expect(r.notes.join(' ')).toMatch(/1 ejercicio tiene su vídeo/);
+    expect(r.notes.join(' ')).toMatch(/no se entendió el peso \("un poco"\)/);
+    const src = r.program!.source!;
+    expect(src).toMatchObject({ kind: 'sheet', name: 'Rutina de mamá.csv' });
+    expect(src.sheets![0].rows[1]).toEqual(['Día 1', 'Prensa', '3', '12', '5 bloques', '', 'https://youtube.com/shorts/abc']);
+    expect(validateProgram(r.program!)).toEqual([]);
+  });
+
+  it('la IA también trae el peso y el vídeo, y el original queda en la rutina', () => {
+    const r = importAiRoutine({
+      name: 'Hoja', description: '', precautions: [], warnings: [],
+      rows: [{ day: 'Día 1', exercise: 'Prensa', sets: '3', reps: '12', rir: '', rest: '', group: '', notes: '', weight: '4 bloques', video: 'https://youtu.be/x', uncertain: false }]
+    }, { kind: 'photos', name: '2 fotos' });
+    expect(r.program!.days[0].exercises[0]).toMatchObject({ startWeight: 4, load: 'bloques', videoUrl: 'https://youtu.be/x' });
+    expect(r.program!.source).toMatchObject({ kind: 'photos', name: '2 fotos' });
+    expect(r.program!.source!.sheets).toBeUndefined();
   });
 });

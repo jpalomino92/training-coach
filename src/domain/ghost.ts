@@ -1,11 +1,14 @@
 /* ==========================================================
-   Fantasma: tu "yo" de hace un mes en el mismo ejercicio.
+   Rocky (antes "el fantasma"): tu "yo" de hace un mes en el mismo ejercicio.
    Se compara cada serie de hoy con la misma serie de entonces
    y, al terminar, en cuántos ejercicios le ganaste.
    ========================================================== */
 import { isCardioMachineKey } from './cardio';
 import { DAY_MS, isTimed, setText } from './format';
 import type { Exercise, UserData, Workout, WorkoutSet } from './types';
+
+/** Nombre de la mascota en los textos. */
+export const ROCKY = 'Rocky';
 
 /** Antigüedad mínima del fantasma (≈ 4 semanas de la misma rutina). */
 export const GHOST_MIN_DAYS = 25;
@@ -33,37 +36,47 @@ export function ghostFor(data: UserData, key: string, excludeWorkoutId?: string 
 
 type SetLike = Pick<WorkoutSet, 'weight' | 'reps'>;
 
-/** Puntuación de una serie: con carga, el 1RM estimado (Epley); sin carga o por tiempo, las repeticiones o el tiempo. */
-export const setScore = (ex: Pick<Exercise, 'unit'>, s: SetLike) => (isTimed(ex) || !s.weight ? s.reps : s.weight * (1 + s.reps / 30));
+/** Referencia de los asistidos: la carga efectiva es ASSIST_REF menos la ayuda (sin ayuda, lo máximo). */
+const ASSIST_REF = 100;
 
-export function compareSet(ex: Pick<Exercise, 'unit'>, mine: SetLike, ghost: SetLike): GhostResult {
+/**
+ * Puntuación de una serie: con carga, el 1RM estimado (Epley); sin carga o por tiempo, las repeticiones o el tiempo.
+ * Asistidos: cuanta menos ayuda, más puntos.
+ */
+export const setScore = (ex: Pick<Exercise, 'unit' | 'assisted'>, s: SetLike) => {
+  if (isTimed(ex)) return s.reps;
+  if (ex.assisted) return Math.max(1, ASSIST_REF - (s.weight || 0)) * (1 + s.reps / 30);
+  return !s.weight ? s.reps : s.weight * (1 + s.reps / 30);
+};
+
+export function compareSet(ex: Pick<Exercise, 'unit' | 'assisted'>, mine: SetLike, ghost: SetLike): GhostResult {
   const a = setScore(ex, mine), b = setScore(ex, ghost);
   if (Math.abs(a - b) < 0.005 * Math.max(a, b)) return 'tie';
   return a > b ? 'win' : 'lose';
 }
 
-/** "Le ganas al fantasma por 2 repeticiones" / "El fantasma hizo 60 kg × 8". */
+/** "Le ganas a Rocky por 2 repeticiones" / "Rocky iba 1 repetición por delante". */
 export function setVersus(ex: Pick<Exercise, 'unit' | 'load'>, mine: SetLike, ghost: SetLike): { result: GhostResult; text: string } {
   const result = compareSet(ex, mine, ghost);
   const sameLoad = (mine.weight || 0) === (ghost.weight || 0);
   const diff = mine.reps - ghost.reps;
   const ref = setText(ex, { ...ghost, rir: null });
-  if (result === 'tie') return { result, text: `Empate con el fantasma (${ref})` };
+  if (result === 'tie') return { result, text: `Empate con Rocky (${ref})` };
   if (sameLoad && diff !== 0) {
     const unit = isTimed(ex) ? (ex.unit === 'min' ? 'min' : 's') : Math.abs(diff) === 1 ? 'repetición' : 'repeticiones';
-    return { result, text: result === 'win' ? `Le ganas al fantasma por ${diff} ${unit}` : `El fantasma iba ${-diff} ${unit} por delante (${ref})` };
+    return { result, text: result === 'win' ? `Le ganas a Rocky por ${diff} ${unit}` : `Rocky iba ${-diff} ${unit} por delante (${ref})` };
   }
-  return { result, text: result === 'win' ? `Le ganas al fantasma (${ref})` : `El fantasma iba mejor (${ref})` };
+  return { result, text: result === 'win' ? `Le ganas a Rocky (${ref})` : `Rocky iba mejor (${ref})` };
 }
 
-/** Lo que hay que superar en esa serie: "Fantasma: 60 kg × 8". */
+/** Lo que hay que superar en esa serie: "Rocky: 60 kg × 8". */
 export function ghostTarget(ex: Pick<Exercise, 'unit' | 'load'>, ghost: Ghost | null, index: number): string | undefined {
   const s = ghost?.sets.find(x => x.set_index === index);
-  return s ? `Fantasma: ${setText(ex, { ...s, rir: null })}` : undefined;
+  return s ? `Rocky: ${setText(ex, { ...s, rir: null })}` : undefined;
 }
 
 /** Resultado de todo el ejercicio: la mejor serie de hoy contra la mejor del fantasma. */
-export function exerciseVersus(ex: Pick<Exercise, 'unit'>, today: SetLike[], ghost: SetLike[]): GhostResult | null {
+export function exerciseVersus(ex: Pick<Exercise, 'unit' | 'assisted'>, today: SetLike[], ghost: SetLike[]): GhostResult | null {
   if (!today.length || !ghost.length) return null;
   const best = (list: SetLike[]) => list.reduce((m, s) => (setScore(ex, s) > setScore(ex, m) ? s : m));
   return compareSet(ex, best(today), best(ghost));
@@ -105,15 +118,15 @@ export function moodFor(wins: number, losses: number, total = wins + losses): Gh
 }
 
 export const MOOD_TEXT: Record<GhostMood, string> = {
-  smug: 'Hoy te estoy ganando.',
+  smug: '¡Hoy te estoy ganando!',
   rival: '¿Me vas a superar?',
   scared: '¡No puede ser! Estás más fuerte.',
-  beaten: '¡Me ganaste! Volveré más fuerte.',
+  beaten: 'Uf… me ganaste. Volveré más fuerte.',
   sad: 'Te extraño… ¿entrenamos?'
 };
 
 /** Comparaciones serie a serie de hoy contra el fantasma. */
-export function setsVersus(ex: Pick<Exercise, 'unit'>, today: (SetLike & Pick<WorkoutSet, 'set_index'>)[], ghost: Ghost | null): { wins: number; losses: number; ties: number } {
+export function setsVersus(ex: Pick<Exercise, 'unit' | 'assisted'>, today: (SetLike & Pick<WorkoutSet, 'set_index'>)[], ghost: Ghost | null): { wins: number; losses: number; ties: number } {
   const out = { wins: 0, losses: 0, ties: 0 };
   if (!ghost) return out;
   for (const s of today) {

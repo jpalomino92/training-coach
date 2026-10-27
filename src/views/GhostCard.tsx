@@ -20,7 +20,7 @@ export function GhostCard() {
     <section className="card ghost-card" aria-labelledby="ghost-t">
       <GhostArt mood={s.mood} level={s.level} size="lg" />
       <div className="tx">
-        <h2 className="h3" id="ghost-t">Tu fantasma · nivel {s.level}</h2>
+        <h2 className="h3" id="ghost-t">Rocky · nivel {s.level}</h2>
         <p className="ghost-quote">«{MOOD_TEXT[s.mood]}»</p>
         <p className="sm">{status}</p>
         <p className="xs muted">

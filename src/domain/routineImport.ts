@@ -1,17 +1,19 @@
 /* ==========================================================
    Importar una rutina desde una planilla (Excel o CSV).
    Una fila por ejercicio: día, ejercicio, series, repeticiones y,
-   si están, RIR (o RPE), descanso, biserie y notas. Entiende la
+   si están, RIR (o RPE), descanso, biserie, notas, peso inicial y
+   vídeo. Entiende la
    forma habitual de escribirlas: "4x8-12", "30s", "RPE 8", "2 min",
    "1:30", "por lado"… Los ejercicios se emparejan con los de las
    rutinas incluidas para compartir historial, dibujo y técnica.
    El resultado siempre pasa por el editor antes de guardarse.
    ========================================================== */
+import { ASSISTED_RE } from './alternatives';
 import { asOwnProgram, blankProgram, DAY_COLORS, normalizeProgram } from './customProgram';
 import { columns, norm, toCsv, type CsvError } from './csv';
 import { DEFAULT_POSE } from './poses';
 import { DEFAULT_WEIGHT_STEP, programList } from './routines';
-import type { Exercise, Program, Unit, WorkoutDay } from './types';
+import type { Exercise, Program, ProgramSource, Unit, WorkoutDay } from './types';
 
 export interface SheetRows { name: string; rows: string[][] }
 
@@ -25,7 +27,11 @@ export interface RoutineImport {
   review: string[];
   matched: number;
   total: number;
+  /** Fotos o PDF (data URL) que se suben al guardar, para "Ver hoja original". */
+  uploads?: SourceUpload[];
 }
+
+export interface SourceUpload { name: string; dataUrl: string }
 
 const COLS = {
   exercise: ['ejercicio', 'ejercicios', 'exercise', 'nombre'],
@@ -35,7 +41,9 @@ const COLS = {
   rir: ['rir', 'rpe', 'intensidad', 'esfuerzo'],
   rest: ['descanso', 'rest', 'pausa', 'recuperacion'],
   group: ['biserie', 'superserie', 'grupo', 'circuito'],
-  notes: ['notas', 'nota', 'observaciones', 'tecnica', 'indicaciones', 'comentarios']
+  notes: ['notas', 'nota', 'observaciones', 'tecnica', 'indicaciones', 'comentarios'],
+  weight: ['peso', 'carga', 'kg', 'kilos', 'bloques', 'peso kg', 'peso inicial', 'carga inicial', 'peso sugerido'],
+  video: ['video', 'videos', 'link', 'enlace', 'url']
 };
 
 /* ---------- Lectura de cada celda ---------- */
@@ -93,6 +101,30 @@ export function parseRest(raw: string): number | null {
   const minutes = m[2] ? /^(min|'|’)/.test(m[2]) && m[2] !== "''" : n <= 10;
   return Math.round(minutes ? n * 60 : n);
 }
+
+/**
+ * Peso inicial: "20", "12,5 kg", "4 bloques", "3 placas", "25 lb", "mancuernas de 2.5kg",
+ * "20/22,5/25" (el de la primera serie), "peso corporal" o "sin peso".
+ * {} si está vacío; null si no se entiende.
+ */
+export function parseLoad(raw: string): { weight?: number; load?: 'kg' | 'bloques'; noWeight?: true } | null {
+  // El decimal se guarda como "p" para que norm() no lo convierta en espacio
+  const s = norm(raw.replace(/(\d)[.,](\d)/g, '$1p$2'));
+  if (!s) return {};
+  if (/peso corporal|sin peso|sin carga|corporal|bodyweight|^bw$/.test(s)) return { noWeight: true };
+  const UNIT = '(kg|kgs|kilo|kilos|k|bloque|bloques|placa|placas|lb|lbs|libra|libras)';
+  // Solo números (uno o una lista) con su unidad, o un número con unidad dentro de un texto
+  const m = new RegExp(`^(\\d+(?:p\\d+)?)(?: (?:a )?\\d+(?:p\\d+)?)*(?: ${UNIT})?$`).exec(s)
+    || new RegExp(`(\\d+(?:p\\d+)?) ?${UNIT}\\b`).exec(s);
+  if (!m) return null;
+  let weight = Number(m[1].replace('p', '.'));
+  const unit = m[2] || '';
+  if (/^(lb|libra)/.test(unit)) weight = Math.round(weight * 0.4536 * 2) / 2;
+  if (!(weight > 0 && weight <= 500)) return null;
+  return /^(bloque|placa)/.test(unit) ? { weight, load: 'bloques' } : { weight, load: 'kg' };
+}
+
+const URL_RE = /^https?:\/\/\S+$/i;
 
 /* ---------- Catálogo de ejercicios ---------- */
 
@@ -157,6 +189,13 @@ function catalog(): Map<string, Exercise> {
   return (catalogCache = out);
 }
 
+/** Nombres de los ejercicios de las rutinas incluidas (sin los del especialista), para que la IA los use. */
+export function catalogNames(): string[] {
+  const names = new Set<string>();
+  for (const p of programList()) for (const d of p.days) for (const e of d.exercises) if (!e.key.startsWith('sp_')) names.add(e.name);
+  return [...names].sort((a, b) => a.localeCompare(b, 'es'));
+}
+
 /** Ejercicio de las rutinas incluidas con ese nombre, o null. */
 export function matchExercise(name: string): Exercise | null {
   return catalog().get(canon(name)) || null;
@@ -218,12 +257,23 @@ function findHeader(rows: string[][]): number {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
+/** Copia de la planilla para "Ver hoja original" (recortada para que quepa en la rutina guardada). */
+function sheetCopy(sheets: SheetRows[]): NonNullable<ProgramSource['sheets']> {
+  return sheets.slice(0, 10).map(sh => {
+    const rows = sh.rows.slice(0, 300).map(r => r.slice(0, 15).map(c => String(c ?? '').slice(0, 300)));
+    while (rows.length && rows[rows.length - 1].every(c => !c.trim())) rows.pop();
+    const width = Math.max(0, ...rows.map(r => r.reduce((n, c, i) => (c.trim() ? i + 1 : n), 0)));
+    return { name: sh.name.slice(0, 60), rows: rows.map(r => r.slice(0, width)) };
+  }).filter(sh => sh.rows.length);
+}
+
 /**
  * Convierte las hojas de una planilla en una rutina propia lista para revisar.
  * Con columna "día" se usa esa columna (una celda vacía sigue en el día anterior);
  * sin ella, cada hoja con ejercicios es un día.
+ * `extra`: más ejercicios conocidos por nombre (los del catálogo de ExerciseDB que eligió la IA).
  */
-export function importRoutine(sheets: SheetRows[], fileName = ''): RoutineImport {
+export function importRoutine(sheets: SheetRows[], fileName = '', extra?: Map<string, Exercise>): RoutineImport {
   const res: RoutineImport = { program: null, errors: [], notes: [], review: [], matched: 0, total: 0 };
   const parsed = sheets.map(s => ({ ...s, rows: s.rows.map(r => r.map(c => (c ?? '').trim())) }))
     .map(s => ({ ...s, header: findHeader(s.rows) })).filter(s => s.header >= 0);
@@ -235,7 +285,7 @@ export function importRoutine(sheets: SheetRows[], fileName = ''): RoutineImport
   let dayColumn = false;
   const days: WorkoutDay[] = [];
   const takenIds = new Set<string>();
-  const counts = { noSets: 0, noRest: 0, noRir: 0, rpe: 0 };
+  const counts = { noSets: 0, noRest: 0, noRir: 0, rpe: 0, weights: 0, videos: 0 };
   const groupsByDay = new Map<WorkoutDay, Map<string, number>>();
 
   const dayFor = (raw: string): WorkoutDay => {
@@ -297,12 +347,19 @@ export function importRoutine(sheets: SheetRows[], fileName = ''): RoutineImport
       if (restCell && rest == null) guessed.push(`no se entendió el descanso ("${restCell}"): se usó el habitual`);
 
       const notes = cols.notes >= 0 ? r[cols.notes] || '' : '';
-      const base = matchExercise(name);
+      const weightCell = cols.weight >= 0 ? r[cols.weight] || '' : '';
+      const loadInfo = parseLoad(weightCell);
+      if (!loadInfo) guessed.push(`no se entendió el peso ("${weightCell}")`);
+      // El vídeo: su columna o cualquier enlace de la fila (a veces va en una columna sin título)
+      const videoCell = (cols.video >= 0 && URL_RE.test(r[cols.video] || '') ? r[cols.video] : r.find(c => URL_RE.test(c))) || '';
+      const base = matchExercise(name) || extra?.get(canon(name)) || null;
       res.total++;
       if (base) res.matched++;
       const ex: Exercise = base
         ? { ...structuredClone(base), name, group: undefined, setTechnique: undefined, videoUrl: undefined }
         : newExercise(name);
+      // "Dominadas asistidas": el peso es la ayuda (menos es mejor)
+      if (ASSISTED_RE.test(name)) ex.assisted = true;
       const timed = target.unit !== 'reps';
       if (rest == null) { if (!restCell) counts.noRest++; } else ex.rest = rest;
       if (!rirGiven) {
@@ -314,6 +371,14 @@ export function importRoutine(sheets: SheetRows[], fileName = ''): RoutineImport
       ex.unit = target.unit;
       if (PER_SIDE.test(`${repsCell} ${setsCell} ${notes}`)) ex.perSide = true;
       if (notes) ex.cue = notes.slice(0, 300);
+      if (loadInfo?.noWeight) { ex.noWeight = true; ex.load = undefined; }
+      else if (loadInfo?.weight) {
+        ex.startWeight = loadInfo.weight;
+        ex.noWeight = undefined;
+        if (loadInfo.load === 'bloques') { ex.load = 'bloques'; ex.weightStep = 1; } else ex.load = undefined;
+        counts.weights++;
+      }
+      if (videoCell) { ex.videoUrl = videoCell.slice(0, 500); counts.videos++; }
       // Un ejercicio repetido en el mismo día lleva otra clave (el historial se separa)
       let key = ex.key, k = 2;
       while (day.exercises.some(e => e.key === key)) key = `${ex.key}_${k++}`;
@@ -349,6 +414,8 @@ export function importRoutine(sheets: SheetRows[], fileName = ''): RoutineImport
   if (counts.noSets) res.notes.push(`${plural(counts.noSets, 'ejercicio no tenía', 'ejercicios no tenían')} series: se pusieron 3.`);
   if (counts.noRest) res.notes.push(`${plural(counts.noRest, 'ejercicio no tenía', 'ejercicios no tenían')} descanso: se usó el habitual (90 s, o 2 min en los básicos).`);
   if (counts.noRir) res.notes.push(`${plural(counts.noRir, 'ejercicio no tenía', 'ejercicios no tenían')} RIR: se puso 2 (dos repeticiones en reserva).`);
+  if (counts.weights) res.notes.push(`${plural(counts.weights, 'ejercicio tiene', 'ejercicios tienen')} peso inicial: la primera vez la app lo propone y después manda tu historial.`);
+  if (counts.videos) res.notes.push(`${plural(counts.videos, 'ejercicio tiene', 'ejercicios tienen')} su vídeo.`);
   if (counts.rpe) res.notes.push(`El RPE se pasó a RIR (RPE 8 = RIR 2) en ${plural(counts.rpe, 'ejercicio', 'ejercicios')}.`);
   if (lonely) res.notes.push(`${plural(lonely, 'marca', 'marcas')} de biserie con un solo ejercicio se ${lonely === 1 ? 'ignoró' : 'ignoraron'}: los ejercicios de una biserie tienen que ir seguidos.`);
   if (unknown) res.notes.push(`${plural(unknown, 'ejercicio no está', 'ejercicios no están')} en el catálogo: revisa su dibujo, el músculo y el paso de peso (marcados con "Revisar").`);
@@ -359,22 +426,23 @@ export function importRoutine(sheets: SheetRows[], fileName = ''): RoutineImport
   res.program = normalizeProgram(asOwnProgram({
     ...base, name, shortName: name.slice(0, 40),
     description: 'Importada desde una planilla.',
-    days: filled.slice(0, 7)
+    days: filled.slice(0, 7),
+    source: { kind: 'sheet', name: fileName.slice(0, 100) || 'Planilla', at: new Date().toISOString(), sheets: sheetCopy(sheets) }
   }));
   return res;
 }
 
 /** Plantilla para rellenar en Excel (CSV con ';', como la exporta Excel en español). */
 export const ROUTINE_TEMPLATE = toCsv([
-  ['dia', 'ejercicio', 'series', 'reps', 'rir', 'descanso', 'biserie', 'notas'],
-  ['Día 1', 'Sentadilla con barra', 4, '6-8', 2, '3 min', '', ''],
-  ['Día 1', 'Prensa', 3, '10-12', 2, 90, '', ''],
-  ['Día 1', 'Curl femoral tumbado', 3, '10-12', 1, 60, 'A', ''],
-  ['Día 1', 'Extensión de cuádriceps', 3, '12-15', 1, 60, 'A', ''],
-  ['Día 2', 'Press banca', 4, '6-8', 2, '3 min', '', ''],
-  ['Día 2', 'Remo con barra', 4, '8-10', 2, '2 min', '', ''],
-  ['Día 2', 'Elevaciones laterales', 3, '12-15', 1, 60, '', 'Sube hasta la altura del hombro'],
-  ['Día 2', 'Paseo del granjero', 3, '30-40s', '', 90, '', '']
+  ['dia', 'ejercicio', 'series', 'reps', 'rir', 'descanso', 'biserie', 'notas', 'peso'],
+  ['Día 1', 'Sentadilla con barra', 4, '6-8', 2, '3 min', '', '', '40 kg'],
+  ['Día 1', 'Prensa', 3, '10-12', 2, 90, '', '', '6 bloques'],
+  ['Día 1', 'Curl femoral tumbado', 3, '10-12', 1, 60, 'A', '', ''],
+  ['Día 1', 'Extensión de cuádriceps', 3, '12-15', 1, 60, 'A', '', ''],
+  ['Día 2', 'Press banca', 4, '6-8', 2, '3 min', '', '', ''],
+  ['Día 2', 'Remo con barra', 4, '8-10', 2, '2 min', '', '', ''],
+  ['Día 2', 'Elevaciones laterales', 3, '12-15', 1, 60, '', 'Sube hasta la altura del hombro', ''],
+  ['Día 2', 'Paseo del granjero', 3, '30-40s', '', 90, '', '', '']
 ]);
 
 /* ---------- Lectura con IA ---------- */
@@ -387,14 +455,16 @@ export interface AiRoutine {
   precautions: string[];
   /** Lo que la IA no pudo leer o tuvo que suponer. */
   warnings: string[];
-  rows: { day: string; exercise: string; sets: string; reps: string; rir: string; rest: string; group: string; notes: string; uncertain: boolean }[];
+  rows: { day: string; exercise: string; sets: string; reps: string; rir: string; rest: string; group: string; notes: string; weight?: string; video?: string; uncertain: boolean;
+    /** Rutina con IA: nombre exacto del ejercicio en el catálogo de ExerciseDB, si sale de ahí. */
+    ref?: string }[];
 }
 
 /** Convierte la lectura de la IA con el mismo importador que una planilla. */
-export function importAiRoutine(ai: AiRoutine): RoutineImport {
-  const header = ['dia', 'ejercicio', 'series', 'reps', 'rir', 'descanso', 'biserie', 'notas'];
-  const rows = ai.rows.map(r => [r.day, r.exercise, r.sets, r.reps, r.rir, r.rest, r.group, r.notes].map(c => String(c ?? '')));
-  const res = importRoutine([{ name: 'IA', rows: [header, ...rows] }]);
+export function importAiRoutine(ai: AiRoutine, source?: Omit<ProgramSource, 'at'>, extra?: Map<string, Exercise>): RoutineImport {
+  const header = ['dia', 'ejercicio', 'series', 'reps', 'rir', 'descanso', 'biserie', 'notas', 'peso', 'video'];
+  const rows = ai.rows.map(r => [r.day, r.exercise, r.sets, r.reps, r.rir, r.rest, r.group, r.notes, r.weight, r.video].map(c => String(c ?? '')));
+  const res = importRoutine([{ name: 'IA', rows: [header, ...rows] }], '', extra);
   // Las filas de la IA no son filas de un archivo: el error se identifica por el ejercicio
   res.errors = res.errors.map(e => ({ ...e, message: e.message.replace(/^Fila \d+: /, '') }));
   const p = res.program;
@@ -404,6 +474,7 @@ export function importAiRoutine(ai: AiRoutine): RoutineImport {
   p.shortName = name.slice(0, 40);
   p.description = (ai.description || '').trim() || 'Importada con IA.';
   p.safety.warnings = (ai.precautions || []).map(w => w.trim()).filter(Boolean);
+  if (source) p.source = { ...source, at: new Date().toISOString() }; else delete p.source;
   // Filas dudosas: se marcan para revisar (por día y nombre, en orden)
   const used = new Set<string>();
   for (const r of ai.rows.filter(x => x.uncertain)) {

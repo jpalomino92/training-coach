@@ -17,10 +17,12 @@ interface Props {
   /** Abre el editor con una rutina propia (nueva o existente). */
   onEdit(p: Program, isNew: boolean): void;
   onImport(): void;
+  /** Crear una rutina a medida con IA. */
+  onGenerate(): void;
 }
 
-export function RoutinePicker({ onClose, onEdit, onImport }: Props) {
-  const { program, profile, assignedProgram, ownPrograms, chooseRoutine, deleteOwnProgram, showToast, coachLink } = useApp();
+export function RoutinePicker({ onClose, onEdit, onImport, onGenerate }: Props) {
+  const { program, profile, assignedProgram, ownPrograms, chooseRoutine, deleteOwnProgram, showToast, coachLink, aiImporter } = useApp();
   const [picked, setPicked] = useState(program.id);
   const [ack, setAck] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -127,6 +129,7 @@ export function RoutinePicker({ onClose, onEdit, onImport }: Props) {
 
       <h3 className="eyebrow picker-sec">Añadir una rutina propia</h3>
       <div className="stack-sm">
+        {aiImporter && <Button variant="secondary" block icon="plus" onClick={() => { onClose(); onGenerate(); }}>Crear una a tu medida con IA</Button>}
         <Button variant="secondary" block icon="upload" onClick={() => { onClose(); onImport(); }}>Importar rutina (Excel, foto o PDF)</Button>
         <Button variant="secondary" block icon="copy" onClick={() => { onClose(); onEdit(asOwnProgram(duplicateProgram(selected)), true); }}>Copiar {selected.shortName} y editarla</Button>
         <Button variant="secondary" block icon="plus" onClick={() => { onClose(); onEdit(asOwnProgram(blankProgram()), true); }}>Crear desde cero</Button>

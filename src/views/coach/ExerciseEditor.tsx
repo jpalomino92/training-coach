@@ -8,7 +8,7 @@ import { Icon } from '../../components/Icon';
 import { RestStepper } from '../../components/RestStepper';
 import { Sheet } from '../../components/Sheet';
 import { SwitchRow } from '../../components/Switch';
-import { maxReps, parseNum, unitWord } from '../../domain/format';
+import { fmtNum, maxReps, parseNum, unitWord } from '../../domain/format';
 import type { Exercise, Unit } from '../../domain/types';
 
 const STEPS = [0.5, 1, 1.25, 2.5, 5];
@@ -30,6 +30,7 @@ export function ExerciseEditor({ initial, onSave, onClose }: { initial: Exercise
   const [sets, setSets] = useState(String(initial.sets));
   const [min, setMin] = useState(String(initial.reps.min));
   const [max, setMax] = useState(String(initial.reps.max));
+  const [start, setStart] = useState(initial.startWeight ? fmtNum(initial.startWeight) : '');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const set = <K extends keyof Exercise>(k: K, v: Exercise[K]) => setEx(e => ({ ...e, [k]: v }));
   const unitMax = maxReps(ex);
@@ -46,9 +47,11 @@ export function ExerciseEditor({ initial, onSave, onClose }: { initial: Exercise
       err.reps = `${w[0].toUpperCase() + w.slice(1)} entre 1 y ${unitMax}; el máximo no puede ser menor que el mínimo.`;
     }
     if (!/^(\d(-\d)?)?$/.test(ex.rir.trim())) err.rir = 'Un número o un rango, por ejemplo 2 o 2-3, o vacío.';
+    const w = start.trim() && !ex.noWeight ? parseNum(start) : null;
+    if (w != null && (Number.isNaN(w) || w <= 0 || w > 500)) err.start = 'Un número entre 0 y 500, por ejemplo 12,5. O vacío.';
     setErrors(err);
     if (Object.keys(err).length) return;
-    onSave({ ...ex, name: ex.name.trim(), rir: ex.rir.trim(), sets: s!, reps: { min: a!, max: b! }, muscle: ex.muscle.trim(), cue: ex.cue.trim(), alt: ex.alt.trim(), warn: ex.warn.trim() });
+    onSave({ ...ex, startWeight: w ?? undefined, name: ex.name.trim(), rir: ex.rir.trim(), sets: s!, reps: { min: a!, max: b! }, muscle: ex.muscle.trim(), cue: ex.cue.trim(), alt: ex.alt.trim(), warn: ex.warn.trim() });
   };
 
   return (
@@ -98,6 +101,11 @@ export function ExerciseEditor({ initial, onSave, onClose }: { initial: Exercise
           <p className="hint" id="ed-load-h">Bloques: máquinas de placas. Sin peso: no se pide el peso al registrar la serie.</p>
         </div>
 
+        {!ex.noWeight && (
+          <TextField label={`${ex.assisted ? 'Asistencia inicial' : 'Peso inicial'} (${ex.load === 'bloques' ? 'bloques' : 'kg'})`} value={start} onChange={e => setStart(e.target.value)} error={errors.start}
+            narrow inputMode="decimal" maxLength={6} hint="Opcional. La primera vez viene puesto en la serie 1; después manda tu historial." />
+        )}
+
         <RestStepper label="Descanso" hint="Entre series de este ejercicio." value={ex.rest} onChange={v => set('rest', v)} />
 
         <div className="field">
@@ -111,6 +119,10 @@ export function ExerciseEditor({ initial, onSave, onClose }: { initial: Exercise
         <div className="card">
           <SwitchRow title="Por lado" description="Las repeticiones se cuentan por cada lado." checked={ex.perSide} onChange={v => set('perSide', v)} />
           <SwitchRow title="Ejercicio básico" description="Usa el descanso de básicos si la persona personaliza los descansos." checked={ex.compound} onChange={v => set('compound', v)} />
+          {!ex.noWeight && (
+            <SwitchRow title="Asistido" description="Dominadas o fondos asistidos: el peso es la ayuda, así que menos es mejor y progresar es bajarla."
+              checked={!!ex.assisted} onChange={v => set('assisted', v || undefined)} />
+          )}
         </div>
 
         <TextArea label="Técnica" value={ex.cue} onChange={v => set('cue', v)} placeholder="Ej.: espalda neutra, baja controlando." />

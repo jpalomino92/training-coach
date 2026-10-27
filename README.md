@@ -76,13 +76,44 @@ Los programas son solo datos (`src/domain/routines.ts`). Para añadir uno, copia
    - `npm run test:e2e:supabase` → la app de producción (con service worker) conectada a Supabase, incluido el uso sin conexión.
    - Usan dos cuentas fijas (`SUPABASE_TEST_EMAIL` con los alias `+test-a` y `+test-b`, y `SUPABASE_TEST_PASSWORD`), que se vacían antes de cada prueba. Se crean la primera vez: en ese momento "Confirm email" tiene que estar desactivado. Supabase limita los registros por hora, por eso no se crean cuentas nuevas en cada ejecución.
 
+### Aviso al terminar el descanso (notificaciones push)
+
+Cada persona lo activa en su teléfono (Perfil › "Aviso fuera de la app"). Al empezar un descanso la app
+apunta la hora de fin en `push_subscriptions`; cada 5 s un cron de Supabase llama a la Edge Function
+`rest-push` si hay alguna vencida, y esta manda la notificación. Si la app está a la vista al terminar,
+el aviso se cancela (ya suena la app). En iPhone necesita la app instalada en la pantalla de inicio.
+
+1. SQL Editor: ejecuta `supabase/migrations/2026-10-28_rest_push.sql` (activa `pg_cron` y `pg_net`).
+2. Edge Functions → Deploy a new function → Via Editor: nombre `rest-push`, pega
+   `supabase/functions/rest-push/index.ts` y deja "Verify JWT" activado.
+3. Edge Functions → Secrets: `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY` (las genera el script de abajo en
+   `.env.push`, que no se sube al repo) y, opcional, `VAPID_SUBJECT` (`mailto:` de contacto).
+   La clave pública también va en `src/config.ts` (`VAPID_PUBLIC_KEY`).
+4. SQL Editor, con los datos de tu proyecto (Settings → API):
+   ```sql
+   select vault.create_secret('https://<proyecto>.supabase.co/functions/v1/rest-push', 'rest_push_url');
+   select vault.create_secret('<clave anon>', 'rest_push_key');
+   ```
+
+Claves nuevas: `node -e "const c=require('crypto');const k=c.generateKeyPairSync('ec',{namedCurve:'prime256v1'}).privateKey.export({format:'jwk'});console.log(Buffer.concat([Buffer.from([4]),Buffer.from(k.x,'base64url'),Buffer.from(k.y,'base64url')]).toString('base64url'),k.d)"`
+(pública y privada). Si cambian, las suscripciones existentes dejan de valer y hay que reactivar el aviso.
+
 ### Importar rutinas con IA
 
 Las rutinas en fotos, PDF o texto libre se leen con OpenAI desde la Edge Function
-`supabase/functions/import-routine` (la clave nunca llega a la app). Hay un límite de 2 lecturas por
-persona y mes, y una lectura que falla no cuenta. Importar desde Excel o CSV no usa IA y no tiene límite.
+`supabase/functions/import-routine` (la clave nunca llega a la app). La misma función crea rutinas a medida
+con las respuestas del perfil inicial (`generate`). Hay un límite de 2 usos de IA (leer o crear) por
+persona y mes, y un uso que falla no cuenta. Importar desde Excel o CSV no usa IA y no tiene límite.
+Las fotos y el PDF originales se guardan en el bucket privado `routine-sources` para "Ver hoja original".
 
-1. SQL Editor: ejecuta `supabase/migrations/2026-10-24_user_programs.sql` y después `2026-10-25_ai_imports.sql`.
+Para crear rutinas, además de los ejercicios de las rutinas incluidas, la IA puede elegir del catálogo de
+ExerciseDB (`src/data/exercise-catalog.json`, ~1.300 ejercicios filtrados según dónde entrena la persona):
+devuelve el nombre exacto del catálogo en `ref` y el ejercicio llega con sus músculos y el paso a paso
+en español. Es solo texto, sin GIF (las animaciones tienen otra licencia, ver `NOTICE.md`). El archivo se
+regenera con `node scripts/exercise-catalog.mjs` y se carga aparte, solo al crear una rutina.
+
+1. SQL Editor: ejecuta `supabase/migrations/2026-10-24_user_programs.sql`, `2026-10-25_ai_imports.sql`
+   y `2026-10-27_routine_sources.sql`.
 2. Edge Functions → Secrets: añade `OPENAI_API_KEY` (opcional: `OPENAI_MODEL`, por defecto `gpt-5-mini`,
    y `AI_IMPORTS_PER_MONTH`, por defecto 2).
 3. Edge Functions → Deploy a new function → Via Editor: nombre `import-routine` y pega el contenido de

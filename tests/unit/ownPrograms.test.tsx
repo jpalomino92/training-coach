@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { App } from '../../src/App';
 import { programList } from '../../src/domain/routines';
 import { DemoAuth } from '../../src/services/auth/demoAuth';
-import type { AiImporter, AiImportInput } from '../../src/services/aiImport';
+import type { AiGenerateInput, AiImporter, AiImportInput } from '../../src/services/aiImport';
 import { LocalOwnPrograms } from '../../src/services/ownPrograms';
 import { LocalStore } from '../../src/services/storage/localStore';
 
@@ -51,6 +51,13 @@ describe('rutinas propias de la persona', () => {
     expect(screen.getByRole('heading', { name: 'Rutina de Eva' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: normal.shortName })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Editar rutina' })).toBeInTheDocument();
+
+    // La planilla original queda guardada con la rutina
+    await user.click(screen.getByRole('button', { name: 'Ver hoja original' }));
+    const original = await screen.findByRole('dialog', { name: 'Hoja original' });
+    expect(within(original).getByText('Planilla · Rutina de Eva.csv', { exact: false })).toBeInTheDocument();
+    expect(within(original).getByRole('cell', { name: 'Sentadilla sissy' })).toBeInTheDocument();
+    await user.click(within(original).getByRole('button', { name: 'Cerrar' }));
 
     // Queda guardada para esta persona
     const userId = Object.keys(localStorage).find(k => k.startsWith('fuerza:v1:own:'))!.split(':').pop()!;
@@ -101,7 +108,8 @@ describe('rutinas propias de la persona', () => {
           { day: 'Lunes', exercise: 'Press banca', sets: '4', reps: '8', rir: '', rest: '2 min', group: '', notes: '', uncertain: false },
           { day: 'Lunes', exercise: 'Remo con barra', sets: '4', reps: '8', rir: '', rest: '', group: '', notes: '', uncertain: true }
         ] } };
-      }
+      },
+      async generate() { throw new Error('No se usa en esta prueba.'); }
     };
     const user = userEvent.setup();
     render(<App backend={{ auth: new DemoAuth(localStorage, 1000), createStore: u => new LocalStore(u.id), createAiImporter: () => fake }} />);
@@ -124,6 +132,63 @@ describe('rutinas propias de la persona', () => {
     expect(screen.getByLabelText('Nombre')).toHaveValue('Rutina del gimnasio');
     await user.click(screen.getByRole('button', { name: 'Guardar rutina' }));
     expect(await screen.findByRole('heading', { name: 'Rutina del gimnasio' })).toBeInTheDocument();
+  });
+
+  it('crea una rutina a medida con IA en el perfil inicial, la revisa y empieza con ella', async () => {
+    const calls: AiGenerateInput[] = [];
+    let left = 2;
+    const fake: AiImporter = {
+      async remaining() { return left; },
+      async read() { throw new Error('No se usa en esta prueba.'); },
+      async generate(input) {
+        calls.push(input);
+        left--;
+        return { remaining: left, routine: { name: 'Fuerza en casa', description: '', precautions: ['Evita cargar la espalda baja.'], warnings: [], rows: [
+          { day: 'Día A', exercise: 'Sentadilla goblet', sets: '3', reps: '10-12', rir: '2', rest: '90', group: '', notes: '', weight: '', video: '', uncertain: false },
+          { day: 'Día B', exercise: 'Remo con mancuerna', sets: '3', reps: '10-12', rir: '2', rest: '90', group: '', notes: 'por lado', weight: '', video: '', uncertain: false }
+        ] } };
+      }
+    };
+    const user = userEvent.setup();
+    render(<App backend={{ auth: new DemoAuth(localStorage, 1000), createStore: u => new LocalStore(u.id), createAiImporter: () => fake }} />);
+    await user.click(await screen.findByRole('button', { name: 'Crear cuenta' }));
+    await user.type(screen.getByLabelText('Email'), 'ana@correo.com');
+    await user.type(screen.getByLabelText('Contraseña'), 'contraseña-larga');
+    await user.type(screen.getByLabelText('Repite la contraseña'), 'contraseña-larga');
+    await user.click(screen.getAllByRole('button', { name: 'Crear cuenta' }).at(-1)!);
+    await user.type(await screen.findByLabelText('Nombre'), 'Ana');
+    await user.type(screen.getByLabelText('Edad'), '62');
+    await user.click(screen.getByRole('button', { name: 'Ganar fuerza' }));
+    await user.click(screen.getByRole('button', { name: 'Mejorar postura y movilidad' }));
+    await user.click(screen.getByRole('button', { name: 'Continuar' }));
+
+    await user.click(await screen.findByRole('button', { name: /Crear una rutina a tu medida con IA/ }));
+    expect(await screen.findByText('Te quedan 2 de 2 usos de IA este mes.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ganar fuerza' })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(within(screen.getByRole('group', { name: 'Días por semana' })).getByRole('button', { name: '2' }));
+    await user.click(screen.getByRole('button', { name: 'Casa con mancuernas' }));
+    await user.type(screen.getByLabelText('Lesiones o limitaciones (opcional)'), 'Hernia lumbar');
+    await user.click(screen.getByRole('button', { name: 'Crear mi rutina con IA' }));
+
+    expect(await screen.findByText('Rutina importada: revísala antes de guardar.')).toBeInTheDocument();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ age: 62, goals: ['Ganar fuerza', 'Mejorar postura y movilidad'], days: 2, minutes: 60, place: 'Casa con mancuernas', limitations: 'Hernia lumbar' });
+    expect(calls[0].catalog).toContain('Abductor y aductor');
+    expect(screen.getByLabelText('Nombre')).toHaveValue('Fuerza en casa');
+    // Con lesiones pide aceptar las precauciones, y la progresión es prudente
+    expect(screen.getByRole('switch', { name: /Pedir aceptar un aviso/ })).toBeChecked();
+    expect(screen.getByRole('switch', { name: /Progresión prudente/ })).toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Ver lo que le pediste a la IA' }));
+    const asked = await screen.findByRole('dialog', { name: 'Hoja original' });
+    expect(within(asked).getByText(/Lesiones o limitaciones: Hernia lumbar/)).toBeInTheDocument();
+    await user.click(within(asked).getByRole('button', { name: 'Cerrar' }));
+    await user.click(screen.getByRole('button', { name: 'Guardar rutina' }));
+
+    expect(await screen.findByRole('heading', { name: 'Hola, Ana' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Rutina/ }));
+    expect(await screen.findByRole('heading', { name: 'Fuerza en casa' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Perfil/ }));
+    expect(await screen.findByText('Ganar fuerza, Mejorar postura y movilidad')).toBeInTheDocument();
   });
 
   it('en modo demo la lectura con IA explica que necesita cuenta en la nube', async () => {

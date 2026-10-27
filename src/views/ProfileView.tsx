@@ -17,6 +17,37 @@ import { ChangePasswordSheet } from './PasswordSheets';
 import { CoachSection } from './CoachSection';
 import { CoachPanel } from './coach/CoachPanel';
 
+/** Aviso push al terminar el descanso: se activa en cada dispositivo (no se sincroniza). */
+function RestPushRow() {
+  const { restPush, showToast } = useApp();
+  const [on, setOn] = useState(false);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let live = true;
+    restPush?.isOn().then(v => { if (live) setOn(v); }).catch(() => {});
+    return () => { live = false; };
+  }, [restPush]);
+  if (!restPush) return null;
+  const toggle = async (v: boolean) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      if (v) await restPush.enable(); else await restPush.disable();
+      setOn(v);
+      showToast(v ? 'Listo: te avisaremos al terminar cada descanso.' : 'Aviso desactivado en este teléfono.');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'No se pudo cambiar el aviso.');
+    } finally { setBusy(false); }
+  };
+  return (
+    <SwitchRow title="Aviso fuera de la app" checked={on}
+      description={restPush.supported()
+        ? 'Una notificación al terminar el descanso aunque estés en otra app o con la pantalla bloqueada. Se activa en cada teléfono; en iPhone, con la app instalada en la pantalla de inicio.'
+        : 'Este navegador no permite notificaciones. En iPhone, instala la app en la pantalla de inicio (Compartir › Añadir a pantalla de inicio) y actívalo desde ahí.'}
+      onChange={v => void toggle(v)} />
+  );
+}
+
 const wakeLockSupported = () => typeof navigator !== 'undefined' && 'wakeLock' in navigator;
 
 /** Ajustes que se guardan al momento (los tiempos de descanso, medio segundo después del último toque). */
@@ -144,11 +175,14 @@ export function ProfileView() {
       <section className="card" aria-labelledby="p-entreno">
         <div className="card-pad" style={{ paddingBottom: 0 }}><h2 className="eyebrow" id="p-entreno">Durante el entrenamiento</h2></div>
         <SwitchRow title="Series de calentamiento" checked={draft.warmup}
-          description="En los básicos con carga, la escalera para llegar al peso de la serie 1." onChange={v => save({ warmup: v })} />
-        <SwitchRow title="Fantasma de hace un mes" checked={draft.ghost}
-          description="Compara cada serie con lo que hiciste en ese ejercicio hace unas 4 semanas." onChange={v => save({ ghost: v })} />
+          description="En el primer básico con carga de cada músculo, la escalera para llegar al peso de la serie 1." onChange={v => save({ warmup: v })} />
+        <SwitchRow title="Qué llevar al gimnasio" checked={draft.gear}
+          description="Antes de empezar, Hoy te recuerda el agua, la toalla y el material que piden los ejercicios del día." onChange={v => save({ gear: v })} />
+        <SwitchRow title="Rocky, tu yo de hace un mes" checked={draft.ghost}
+          description="Compara cada serie con lo que hiciste en ese ejercicio hace unas 4 semanas, y Rocky reacciona." onChange={v => save({ ghost: v })} />
         <SwitchRow title="Sonido al terminar el descanso" checked={draft.sound}
           description="Dos pitidos cortos, además de la vibración (en iPhone no hay vibración)." onChange={v => save({ sound: v })} />
+        <RestPushRow />
         <SwitchRow title="Mantener la pantalla encendida" checked={draft.keep_awake && wakeLockSupported()}
           description={wakeLockSupported() ? 'Mientras tengas un entrenamiento en curso. Gasta algo más de batería.' : 'Tu navegador no lo permite.'}
           onChange={v => { if (wakeLockSupported()) save({ keep_awake: v }); }} />

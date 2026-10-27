@@ -9,7 +9,8 @@ export const DEFAULT_PREFS: Prefs = {
   keep_awake: false,
   bar_kg: 20,
   ghost: true,
-  warmup: true
+  warmup: true,
+  gear: true
 };
 
 export const REST_MIN = 15;

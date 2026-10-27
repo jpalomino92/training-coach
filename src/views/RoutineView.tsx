@@ -12,13 +12,17 @@ import { PAIN_GUIDE } from '../domain/routines';
 import { dayUnits, isGroup, supersetPrefsFor, unitLabel } from '../domain/supersets';
 import { totalSets } from '../domain/workout';
 import { useApp } from '../state/AppContext';
-import type { RoutineImport } from '../domain/routineImport';
+import type { RoutineImport, SourceUpload } from '../domain/routineImport';
 import type { Program } from '../domain/types';
 import { ProgramEditor } from './coach/ProgramEditor';
+import { GenerateRoutineForm } from './GenerateRoutine';
 import { ImportRoutineSheet } from './ImportRoutineSheet';
+import { Sheet } from '../components/Sheet';
+import { goalsOf } from '../domain/routineGenerate';
 import { RoutinePicker } from './RoutinePicker';
+import { SourceSheet } from './SourceSheet';
 
-interface Editing { program: Program; isNew: boolean; notes?: string[]; review?: string[] }
+interface Editing { program: Program; isNew: boolean; notes?: string[]; review?: string[]; uploads?: SourceUpload[] }
 
 const WEEKDAY_INDEX = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 const WEEKDAY_NAME: Record<string, string> = { L: 'Lunes', M: 'Martes', X: 'Miércoles', J: 'Jueves', V: 'Viernes', S: 'Sábado', D: 'Domingo' };
@@ -39,7 +43,7 @@ function Info({ icon, title, children, defaultOpen }: { icon: IconName; title: s
 }
 
 export function RoutineView() {
-  const { program, setDayId, setTab, dayId, prefs, updateSettings, showToast, ownPrograms, saveOwnProgram, chooseRoutine } = useApp();
+  const { program, profile, setDayId, setTab, dayId, prefs, updateSettings, showToast, ownPrograms, saveOwnProgram, chooseRoutine } = useApp();
   const [openDay, setOpenDay] = useState<string | null>(dayId);
   const plan = weekPlanFor(program, prefs);
   const ownPlan = plan !== program.weekPlan;
@@ -48,7 +52,9 @@ export function RoutineView() {
   const [saving, setSaving] = useState(false);
   const [picking, setPicking] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [editing, setEditing] = useState<Editing | null>(null);
+  const [showSource, setShowSource] = useState(false);
   useEffect(() => { window.scrollTo({ top: 0 }); }, [editing]);
   const savePlan = async (next: [string, string | null][] | null) => {
     setSaving(true);
@@ -64,7 +70,8 @@ export function RoutineView() {
     if (!r.program) return;
     const skipped = r.errors.length ? [`${r.errors.length} ${r.errors.length === 1 ? 'fila con errores no se importó' : 'filas con errores no se importaron'}: añade esos ejercicios a mano.`] : [];
     setImporting(false);
-    setEditing({ program: r.program, isNew: true, notes: [...skipped, ...r.notes], review: r.review });
+    setGenerating(false);
+    setEditing({ program: r.program, isNew: true, notes: [...skipped, ...r.notes], review: r.review, uploads: r.uploads });
   };
   // La rutina propia sin el cardio final que se añade al usarla
   const ownCurrent = program.own ? ownPrograms.find(p => p.id === program.id) : undefined;
@@ -73,8 +80,9 @@ export function RoutineView() {
     const { isNew } = editing;
     return (
       <ProgramEditor initial={editing.program} isNew={isNew} notes={editing.notes} review={editing.review} backLabel="Rutina"
+        previews={editing.uploads?.map(u => u.dataUrl)}
         onClose={() => setEditing(null)}
-        onSave={saveOwnProgram}
+        onSave={p => saveOwnProgram(p, editing.uploads)}
         onSaved={p => {
           setEditing(null);
           if (!isNew) { showToast('Rutina guardada.'); return; }
@@ -101,9 +109,16 @@ export function RoutineView() {
       <div className="stack-sm">
         <Button variant="secondary" block icon="rutina" onClick={() => setPicking(true)}>Cambiar de rutina</Button>
         {ownCurrent && <Button variant="secondary" block icon="pencil" onClick={() => setEditing({ program: ownCurrent, isNew: false })}>Editar rutina</Button>}
+        {ownCurrent?.source && <Button variant="secondary" block icon="search" onClick={() => setShowSource(true)}>{ownCurrent.source.kind === 'generated' ? 'Ver lo que le pediste a la IA' : 'Ver hoja original'}</Button>}
       </div>
-      {picking && <RoutinePicker onClose={() => setPicking(false)} onImport={() => setImporting(true)} onEdit={(p, isNew) => setEditing({ program: p, isNew })} />}
+      {showSource && ownCurrent?.source && <SourceSheet source={ownCurrent.source} onClose={() => setShowSource(false)} />}
+      {picking && <RoutinePicker onClose={() => setPicking(false)} onImport={() => setImporting(true)} onGenerate={() => setGenerating(true)} onEdit={(p, isNew) => setEditing({ program: p, isNew })} />}
       {importing && <ImportRoutineSheet onClose={() => setImporting(false)} onReview={reviewImport} />}
+      {generating && (
+        <Sheet title="Rutina a tu medida" onClose={() => setGenerating(false)}>
+          <GenerateRoutineForm base={{ age: profile?.age ?? null, sex: profile?.sex || '', goals: goalsOf(profile?.goal), level: profile?.level || '' }} onResult={reviewImport} />
+        </Sheet>
+      )}
 
       {program.safety.requiresHealthNotice && <HealthNoticeFull safety={program.safety} />}
 

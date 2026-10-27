@@ -60,7 +60,8 @@ export const TechniquePanel = forwardRef<TechniquePanelHandle, Props>(function T
             </dd></div>
           )}
           {!!ex.instructions?.length && (
-            <div><dt className="eyebrow">Paso a paso <span lang="es">(en inglés)</span></dt><dd><ol className="steps-en" lang="en">{ex.instructions.map((s, i) => <li key={i}>{s}</li>)}</ol></dd></div>
+            // Los añadidos desde la búsqueda de ExerciseDB vienen en inglés; los del catálogo, en español
+            <div><dt className="eyebrow">Paso a paso{ex.exercisedbId && <span lang="es"> (en inglés)</span>}</dt><dd><ol className="steps-en" lang={ex.exercisedbId ? 'en' : 'es'}>{ex.instructions.map((s, i) => <li key={i}>{s}</li>)}</ol></dd></div>
           )}
         </dl>
         {ex.warn && (

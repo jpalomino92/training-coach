@@ -2,8 +2,9 @@
    Progression Logic (doble progresión)
    Nunca cambia pesos por sí sola: solo devuelve una sugerencia
    de texto. La persona siempre decide el peso de la sesión.
+   En los asistidos el peso es la ayuda: progresar es bajarla.
    ========================================================== */
-import { fmtNum, isTimed, loadText, round2, unitSuffix, unitWord as unitWordOf } from './format';
+import { bestLoad, fmtNum, isTimed, loadText, round2, unitSuffix, unitWord as unitWordOf } from './format';
 import { secondSetWeight, TECHNIQUES } from './setTechnique';
 import type { Exercise, Feel, Program } from './types';
 
@@ -35,13 +36,14 @@ export interface SessionSummary {
   count: number;
 }
 
-export function summarize(sets: SetLike[]): SessionSummary | null {
+/** `assisted`: la carga de referencia es la menor ayuda. */
+export function summarize(sets: SetLike[], assisted = false): SessionSummary | null {
   const s = [...sets].sort((a, b) => a.set_index - b.set_index);
   if (!s.length) return null;
   const weights = s.map(x => Number(x.weight) || 0);
   const rirs = s.map(x => x.rir).filter((x): x is number => x !== null && x !== undefined);
   return {
-    topWeight: Math.max(...weights),
+    topWeight: bestLoad({ assisted }, weights),
     weights,
     reps: s.map(x => x.reps),
     finalRir: rirs.length ? Number(rirs[rirs.length - 1]) : null,
@@ -74,6 +76,16 @@ export function suggest(ex: Exercise, sets: SetLike[] | null | undefined, progra
   if (!sets || !sets.length) {
     const range = ex.reps.min === ex.reps.max ? String(ex.reps.min) : `${ex.reps.min}-${ex.reps.max}`;
     const what = ex.load === 'bloques' ? 'los bloques con los que' : 'un peso con el que';
+    // Peso anotado en la rutina (p. ej. en la hoja importada): se propone tal cual
+    if (ex.startWeight && !ex.noWeight && ex.unit !== 'min') {
+      const goal = isTimed(ex) ? `aguanta ${range} ${unitWord}` : `haz ${range} repeticiones`;
+      return {
+        level: 'none',
+        action: 'Primera vez.',
+        reason: `Empieza con ${kg(ex.startWeight)}, el peso que indica tu rutina, y ${goal}${ex.rir && !isTimed(ex) ? ` dejando ${ex.rir.split('-')[0]} en reserva` : ''}. Si te resulta muy fácil o muy difícil, ajústalo.`,
+        weight: ex.startWeight
+      };
+    }
     return {
       level: 'none',
       action: 'Primera vez.',
@@ -100,13 +112,20 @@ export function suggest(ex: Exercise, sets: SetLike[] | null | undefined, progra
     if (top && Number(top.weight) > 0) return twoSetSuggest(ex, top, cfg.cautious, kg);
   }
 
-  const sum = summarize(sets)!;
+  const assisted = !!ex.assisted;
+  const sum = summarize(sets, assisted)!;
   const step = ex.weightStep;
-  // Los ejercicios por tiempo con peso (sostener mancuernas, pinza con discos) progresan en kilos
-  const noLoad = sum.topWeight <= 0;
   const top = sum.topWeight;
-  const up = round2(top + step);
-  const down = Math.max(0, round2(top - step));
+  if (assisted && top <= 0 && sets.length >= ex.sets && sets.every(x => Number(x.reps) >= ex.reps.min)) {
+    return { level: 'up', action: 'Ya lo haces sin asistencia.', reason: 'Pasa a la versión sin ayuda, o súmale repeticiones hasta llegar al máximo del rango.' };
+  }
+  // Los ejercicios por tiempo con peso (sostener mancuernas, pinza con discos) progresan en kilos
+  const noLoad = top <= 0 && !assisted;
+  // Asistidos: subir de nivel es quitar ayuda; bajar, añadirla
+  const up = assisted ? Math.max(0, round2(top - step)) : round2(top + step);
+  const down = assisted ? round2(top + step) : Math.max(0, round2(top - step));
+  const [upVerb, downVerb] = assisted ? ['baja', 'sube'] : ['sube', 'baja'];
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   const repsText = sum.reps.join(' / ');
   const lastText = `${repsText}${unitSuffix(ex)}${sum.minRir !== null ? ` con RIR ${fmtNum(sum.minRir)}` : ''}`;
   const rirKnown = sum.minRir !== null;
@@ -129,8 +148,8 @@ export function suggest(ex: Exercise, sets: SetLike[] | null | undefined, progra
         : { level: 'up', action: 'Aumenta un poco la dificultad o el tiempo.', reason: `La última vez hiciste ${lastText}.` };
     }
     return cfg.cautious
-      ? { level: 'up', action: `Podrías subir a ${kg(up)}, solo si no hubo dolor.`, reason: `Sube solo el incremento mínimo (${kg(step)}). La última vez hiciste ${lastText}.`, weight: up }
-      : { level: 'up', action: `Sube a ${kg(up)}.`, reason: `La última vez hiciste ${lastText}.`, weight: up };
+      ? { level: 'up', action: `Podrías ${upVerb === 'sube' ? 'subir' : 'bajar'} a ${kg(up)}, solo si no hubo dolor.`, reason: `${assisted ? 'Cambia' : 'Sube'} solo el incremento mínimo (${loadText(step, { load: ex.load })}). La última vez hiciste ${lastText}.`, weight: up }
+      : { level: 'up', action: `${cap(upVerb)} a ${kg(up)}.`, reason: `La última vez hiciste ${lastText}.`, weight: up };
   }
 
   if (allTop && !rirOk) {
@@ -152,8 +171,8 @@ export function suggest(ex: Exercise, sets: SetLike[] | null | undefined, progra
       return { level: 'down', action: 'Mantén o reduce un poco la dificultad.', reason: `${why} Prioriza la técnica.` };
     }
     return cfg.cautious
-      ? { level: 'down', action: `Mantén ${kg(top)} o baja a ${kg(down)}.`, reason: `${why} El objetivo es terminar cada serie con 2–4 repeticiones en reserva.`, weight: down }
-      : { level: 'down', action: `Baja a ${kg(down)}.`, reason: `${why} Prioriza la técnica.`, weight: down };
+      ? { level: 'down', action: `Mantén ${kg(top)} o ${downVerb} a ${kg(down)}.`, reason: `${why} El objetivo es terminar cada serie con 2–4 repeticiones en reserva.`, weight: down }
+      : { level: 'down', action: `${cap(downVerb)} a ${kg(down)}.`, reason: `${why} Prioriza la técnica.`, weight: down };
   }
 
   if (noLoad) {
@@ -162,8 +181,8 @@ export function suggest(ex: Exercise, sets: SetLike[] | null | undefined, progra
   return {
     level: 'hold', action: hold, weight: top,
     reason: cfg.cautious
-      ? `Prioriza un movimiento lento y sin dolor. Cuando hagas ${ex.reps.max} en las ${ex.sets} series con RIR ${cfg.minRirToProgress} o más, podrías subir a ${kg(up)}.`
-      : `Cuando hagas ${ex.reps.max} ${unitWord} en todas las series, sube a ${kg(up)}.`
+      ? `Prioriza un movimiento lento y sin dolor. Cuando hagas ${ex.reps.max} en las ${ex.sets} series con RIR ${cfg.minRirToProgress} o más, podrías ${upVerb === 'sube' ? 'subir' : 'bajar'} a ${kg(up)}.`
+      : `Cuando hagas ${ex.reps.max} ${unitWord} en todas las series, ${upVerb} a ${kg(up)}.`
   };
 }
 
